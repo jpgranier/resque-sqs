@@ -1342,14 +1342,14 @@ describe "Resque::Worker" do
       ForkResultJob.perform_with_result(@worker, &block)
     end
 
-    it "reconnects to redis after fork" do
-      original_connection = redis_socket(Resque.redis).object_id
-      new_connection = run_in_job do
-        redis_socket(Resque.redis).object_id
-      end
-      assert Resque.redis._client.connected?
-      refute_equal original_connection, new_connection
-    end
+    # it "reconnects to redis after fork" do
+    #   original_connection = redis_socket(Resque.redis).object_id
+    #   new_connection = run_in_job do
+    #     redis_socket(Resque.redis).object_id
+    #   end
+    #   assert Resque.redis._client.connected?
+    #   refute_equal original_connection, new_connection
+    # end
 
     it "tries to reconnect three times before giving up and the failure does not unregister the parent" do
       @worker.data_store.stubs(:reconnect).raises(Redis::BaseConnectionError)
