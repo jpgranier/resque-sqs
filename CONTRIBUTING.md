@@ -1,7 +1,7 @@
 Contributing to Resque
 ======================
 
-First of all: thank you! We appreciate any help you can give Resque.
+First of all: thank you! We appreciate any help you can give ResqueSqs.
 
 The main way to contribute to Resque is to write some code! Here's how:
 

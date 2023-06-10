@@ -4,7 +4,7 @@ require "mocha"
 
 describe "rake tasks" do
   before do
-    Rake.application.rake_require "tasks/resque"
+    Rake.application.rake_require "tasks/resque_sqs"
   end
 
   after do
@@ -13,34 +13,34 @@ describe "rake tasks" do
     ENV['VERBOSE'] = nil
   end
 
-  describe 'resque:work' do
+  describe 'resque_sqs:work' do
 
     it "requires QUEUE environment variable" do
-      assert_system_exit("set QUEUE env var, e.g. $ QUEUE=critical,high rake resque:work") do
-        run_rake_task("resque:work")
+      assert_system_exit("set QUEUE env var, e.g. $ QUEUE=critical,high rake resque_sqs:work") do
+        run_rake_task("resque_sqs:work")
       end
     end
 
     it "works when multiple queues specified" do
       ENV["QUEUES"] = "high,low"
-      Resque::Worker.any_instance.expects(:work)
-      run_rake_task("resque:work")
+      ResqueSqs::Worker.any_instance.expects(:work)
+      run_rake_task("resque_sqs:work")
     end
 
     describe 'log output' do
       let(:messages) { StringIO.new }
 
       before do
-        Resque.logger = Logger.new(messages)
-        Resque.logger.level = Logger::ERROR
-        Resque.enqueue_to(:jobs, SomeJob, 20, '/tmp')
-        Resque::Worker.any_instance.stubs(:shutdown?).returns(false, true) # Process one job and then quit
+        ResqueSqs.logger = Logger.new(messages)
+        ResqueSqs.logger.level = Logger::ERROR
+        ResqueSqs.enqueue_to(:jobs, SomeJob, 20, '/tmp')
+        ResqueSqs::Worker.any_instance.stubs(:shutdown?).returns(false, true) # Process one job and then quit
       end
 
       it "triggers DEBUG level logging when VVERBOSE is set to 1" do
         ENV['VVERBOSE'] = '1'
         ENV['QUEUES'] = 'jobs'
-        run_rake_task("resque:work")
+        run_rake_task("resque_sqs:work")
         assert_includes messages.string, 'Starting worker' # Include an info level statement
         assert_includes messages.string, 'Registered signals' # Includes a debug level statement
       end
@@ -48,7 +48,7 @@ describe "rake tasks" do
       it "triggers INFO level logging when VERBOSE is set to 1" do
         ENV['VERBOSE'] = '1'
         ENV['QUEUES'] = 'jobs'
-        run_rake_task("resque:work")
+        run_rake_task("resque_sqs:work")
         assert_includes messages.string, 'Starting worker' # Include an info level statement
         refute_includes messages.string, 'Registered signals' # Does not a debug level statement
       end
@@ -56,11 +56,11 @@ describe "rake tasks" do
 
   end
 
-  describe 'resque:workers' do
+  describe 'resque_sqs:workers' do
 
     it 'requires COUNT environment variable' do
-      assert_system_exit("set COUNT env var, e.g. $ COUNT=2 rake resque:workers") do
-        run_rake_task("resque:workers")
+      assert_system_exit("set COUNT env var, e.g. $ COUNT=2 rake resque_sqs:workers") do
+        run_rake_task("resque_sqs:workers")
       end
     end
 

@@ -8,7 +8,7 @@ require 'tempfile'
 $dir = File.dirname(File.expand_path(__FILE__))
 $LOAD_PATH.unshift $dir + '/../lib'
 ENV['TERM_CHILD'] = "1"
-require 'resque'
+require 'resque_sqs'
 $TEST_PID=Process.pid
 
 begin
@@ -47,15 +47,15 @@ class GlobalSpecHooks < MiniTest::Spec
   def setup
     super
     reset_logger
-    Resque.redis.redis.flushall
-    Resque.before_first_fork = nil
-    Resque.before_fork = nil
-    Resque.after_fork = nil
+    ResqueSqs.redis.redis.flushall
+    ResqueSqs.before_first_fork = nil
+    ResqueSqs.before_fork = nil
+    ResqueSqs.after_fork = nil
   end
 
   def teardown
     super
-    Resque::Worker.kill_all_heartbeat_threads
+    ResqueSqs::Worker.kill_all_heartbeat_threads
   end
 
   register_spec_type(/.*/, self)
@@ -68,11 +68,11 @@ if ENV.key? 'RESQUE_DISTRIBUTED'
   `redis-server #{$dir}/redis-test.conf`
   `redis-server #{$dir}/redis-test-cluster.conf`
   r = Redis::Distributed.new(['redis://localhost:9736', 'redis://localhost:9737'])
-  Resque.redis = Redis::Namespace.new :resque, :redis => r
+  ResqueSqs.redis = Redis::Namespace.new :resque, :redis => r
 else
   puts "Starting redis for testing at localhost:9736..."
   `redis-server #{$dir}/redis-test.conf`
-  Resque.redis = 'localhost:9736'
+  ResqueSqs.redis = 'localhost:9736'
 end
 
 ##
@@ -80,14 +80,14 @@ end
 #
 module PerformJob
   def perform_job(klass, *args)
-    resque_job = Resque::Job.new(:testqueue, 'class' => klass, 'args' => args)
+    resque_job = ResqueSqs::Job.new(:testqueue, 'class' => klass, 'args' => args)
     resque_job.perform
   end
 end
 
 ##
 # Helper to make Minitest::Assertion exceptions work properly
-# in the block given to Resque::Worker#work.
+# in the block given to ResqueSqs::Worker#work.
 #
 module AssertInWorkBlock
   # if a block is given, ensure that it is run, and that any assertion
@@ -126,7 +126,7 @@ end
 
 class JsonObject
   def to_json(opts = {})
-    val = Resque.redis.get("count")
+    val = ResqueSqs.redis.get("count")
     { "val" => val }.to_json
   end
 end
@@ -174,18 +174,18 @@ class BadJobWithOnFailureHookFail < BadJobWithSyntaxError
   end
 end
 
-class BadFailureBackend < Resque::Failure::Base
+class BadFailureBackend < ResqueSqs::Failure::Base
   def save
     raise Exception.new("Failure backend error")
   end
 end
 
 def with_failure_backend(failure_backend, &block)
-  previous_backend = Resque::Failure.backend
-  Resque::Failure.backend = failure_backend
+  previous_backend = ResqueSqs::Failure.backend
+  ResqueSqs::Failure.backend = failure_backend
   yield block
 ensure
-  Resque::Failure.backend = previous_backend
+  ResqueSqs::Failure.backend = previous_backend
 end
 
 require 'time'
@@ -239,7 +239,7 @@ end
 # Log to log/test.log
 def reset_logger
   $test_logger ||= MonoLogger.new(File.open(File.expand_path("../../log/test.log", __FILE__), "w"))
-  Resque.logger = $test_logger
+  ResqueSqs.logger = $test_logger
 end
 
 def suppress_warnings

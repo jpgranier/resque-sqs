@@ -1,1 +1,1 @@
-require 'resque'
+require 'resque_sqs'

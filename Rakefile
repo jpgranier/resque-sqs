@@ -5,7 +5,7 @@
 load 'lib/tasks/redis.rake'
 
 $LOAD_PATH.unshift 'lib'
-require 'resque/tasks'
+require 'resque_sqs/tasks'
 
 def command?(command)
   system("type #{command} > /dev/null 2>&1")

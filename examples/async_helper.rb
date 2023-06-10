@@ -1,5 +1,5 @@
 # If you want to just call a method on an object in the background,
-# we can easily add that functionality to Resque.
+# we can easily add that functionality to ResqueSqs.
 #
 # This is similar to DelayedJob's `send_later`.
 #
@@ -18,7 +18,7 @@ class Repository < ActiveRecord::Base
   # We can pass this any Repository instance method that we want to
   # run later.
   def async(method, *args)
-    Resque.enqueue(Repository, id, method, *args)
+    ResqueSqs.enqueue(Repository, id, method, *args)
   end
 end
 

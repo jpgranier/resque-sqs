@@ -1,6 +1,6 @@
 require 'test_helper'
 
-describe "Resque::Job before_perform" do
+describe "ResqueSqs::Job before_perform" do
   include PerformJob
 
   class ::BeforePerformJob
@@ -40,21 +40,21 @@ describe "Resque::Job before_perform" do
   class ::BeforePerformJobAborts
     def self.before_perform_abort(history)
       history << :before_perform
-      raise Resque::Job::DontPerform
+      raise ResqueSqs::Job::DontPerform
     end
     def self.perform(history)
       history << :perform
     end
   end
 
-  it "does not perform if before_perform raises Resque::Job::DontPerform" do
+  it "does not perform if before_perform raises ResqueSqs::Job::DontPerform" do
     result = perform_job(BeforePerformJobAborts, history=[])
     assert_equal false, result, "perform returned false"
     assert_equal history, [:before_perform], "Only before_perform was run"
   end
 end
 
-describe "Resque::Job after_perform" do
+describe "ResqueSqs::Job after_perform" do
   include PerformJob
 
   class ::AfterPerformJob
@@ -91,7 +91,7 @@ describe "Resque::Job after_perform" do
   end
 end
 
-describe "Resque::Job around_perform" do
+describe "ResqueSqs::Job around_perform" do
   include PerformJob
 
   class ::AroundPerformJob
@@ -173,7 +173,7 @@ describe "Resque::Job around_perform" do
   end
 end
 
-describe "Resque::Job on_failure" do
+describe "ResqueSqs::Job on_failure" do
   include PerformJob
 
   class ::FailureJobThatDoesNotFail
@@ -238,7 +238,7 @@ describe "Resque::Job on_failure" do
   end
 end
 
-describe "Resque::Job after_enqueue" do
+describe "ResqueSqs::Job after_enqueue" do
   include PerformJob
 
   class ::AfterEnqueueJob
@@ -253,15 +253,15 @@ describe "Resque::Job after_enqueue" do
 
   it "the after enqueue hook should run" do
     history = []
-    @worker = Resque::Worker.new(:jobs)
-    Resque.enqueue(AfterEnqueueJob, history)
+    @worker = ResqueSqs::Worker.new(:jobs)
+    ResqueSqs.enqueue(AfterEnqueueJob, history)
     @worker.work(0)
     assert_equal history, [:after_enqueue], "after_enqueue was not run"
   end
 end
 
 
-describe "Resque::Job before_enqueue" do
+describe "ResqueSqs::Job before_enqueue" do
   include PerformJob
 
   class ::BeforeEnqueueJob
@@ -286,22 +286,22 @@ describe "Resque::Job before_enqueue" do
 
   it "the before enqueue hook should run" do
     history = []
-    @worker = Resque::Worker.new(:jobs)
-    assert Resque.enqueue(BeforeEnqueueJob, history)
+    @worker = ResqueSqs::Worker.new(:jobs)
+    assert ResqueSqs.enqueue(BeforeEnqueueJob, history)
     @worker.work(0)
     assert_equal history, [:before_enqueue], "before_enqueue was not run"
   end
 
   it "a before enqueue hook that returns false should prevent the job from getting queued" do
-    Resque.remove_queue(:jobs)
+    ResqueSqs.remove_queue(:jobs)
     history = []
-    @worker = Resque::Worker.new(:jobs)
-    assert_nil Resque.enqueue(BeforeEnqueueJobAbort, history)
-    assert_equal 0, Resque.size(:jobs)
+    @worker = ResqueSqs::Worker.new(:jobs)
+    assert_nil ResqueSqs.enqueue(BeforeEnqueueJobAbort, history)
+    assert_equal 0, ResqueSqs.size(:jobs)
   end
 end
 
-describe "Resque::Job after_dequeue" do
+describe "ResqueSqs::Job after_dequeue" do
   include PerformJob
 
   class ::AfterDequeueJob
@@ -316,15 +316,15 @@ describe "Resque::Job after_dequeue" do
 
   it "the after dequeue hook should run" do
     history = []
-    @worker = Resque::Worker.new(:jobs)
-    Resque.dequeue(AfterDequeueJob, history)
+    @worker = ResqueSqs::Worker.new(:jobs)
+    ResqueSqs.dequeue(AfterDequeueJob, history)
     @worker.work(0)
     assert_equal history, [:after_dequeue], "after_dequeue was not run"
   end
 end
 
 
-describe "Resque::Job before_dequeue" do
+describe "ResqueSqs::Job before_dequeue" do
   include PerformJob
 
   class ::BeforeDequeueJob
@@ -349,19 +349,19 @@ describe "Resque::Job before_dequeue" do
 
   it "the before dequeue hook should run" do
     history = []
-    @worker = Resque::Worker.new(:jobs)
-    Resque.dequeue(BeforeDequeueJob, history)
+    @worker = ResqueSqs::Worker.new(:jobs)
+    ResqueSqs.dequeue(BeforeDequeueJob, history)
     @worker.work(0)
     assert_equal history, [:before_dequeue], "before_dequeue was not run"
   end
 
   it "a before dequeue hook that returns false should prevent the job from getting dequeued" do
     history = []
-    assert_nil Resque.dequeue(BeforeDequeueJobAbort, history)
+    assert_nil ResqueSqs.dequeue(BeforeDequeueJobAbort, history)
   end
 end
 
-describe "Resque::Job all hooks" do
+describe "ResqueSqs::Job all hooks" do
   include PerformJob
 
   class ::VeryHookyJob
@@ -462,14 +462,14 @@ describe "Resque::Job all hooks" do
 
   it "it runs callbacks when inline is true" do
     begin
-      Resque.inline = true
+      ResqueSqs.inline = true
       # Sending down two parameters that can be passed and updated by reference
-      result = Resque.enqueue(CallbacksInline, [], {'count' => 0})
+      result = ResqueSqs.enqueue(CallbacksInline, [], {'count' => 0})
       assert_equal true, result, "perform returned true"
       assert_equal $history, [:before_perform, :start_around_perform, :perform, :finish_around_perform, :after_perform]
       assert_equal 4, $count['count']
     ensure
-      Resque.inline = false
+      ResqueSqs.inline = false
     end
   end
 end

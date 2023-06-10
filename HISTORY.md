@@ -3,7 +3,7 @@
 ### Fixed
 
 * Replace `File.exists?` with `File.exist?` (#1846)
-* Escape `Resque.redis_id` for stats page (#1834)
+* Escape `ResqueSqs.redis_id` for stats page (#1834)
 * Escape resque info values (#1832)
 * Correctly show the values of hash and none type on stats tab (#1838)
 * Fix logging the worker name when starting the task (#1837)
@@ -11,7 +11,7 @@
 ### Added
 
 * Raise an error when no available Rack server was found (#1836)
-* Move code in `Resque::Server.helpers` block into a module to make it testable (#1851)
+* Move code in `ResqueSqs::Server.helpers` block into a module to make it testable (#1851)
 
 ## 2.4.0
 
@@ -70,7 +70,7 @@
 
 ### Added
 
-* Add requeue_queue method to Resque::Failure::Multiple #1659
+* Add requeue_queue method to ResqueSqs::Failure::Multiple #1659
 * Confirmation prompt in admin front-end before submitting the retry of all failed jobs. #1753
 * Railtie for default rake task setup when in Rails. #1715
 * Added two new hooks.
@@ -85,7 +85,7 @@
 * live poller shouldn't restart itself until it successds or fails. #1740
 * Fix parsing worker_id when queue name includes colon. #1691
 * Prune workers which haven't been registered but have set a heartbeat. #1751
-* `Resque::Failure::Multiple.remove` did not pass on the queue parameter
+* `ResqueSqs::Failure::Multiple.remove` did not pass on the queue parameter
 
 ## 2.0.0 (2018-11-06)
 
@@ -116,7 +116,7 @@
 ## 1.27.3 (2017-04-10)
 
 ### Fixed
-* Fix issue where initializing a data store would attempt to hit Redis, even when Resque.inline = true
+* Fix issue where initializing a data store would attempt to hit Redis, even when ResqueSqs.inline = true
 
 ## 1.27.2 (2017-02-20)
 
@@ -164,7 +164,7 @@ the next release.
   worker instead of the current pid. (@yaauie)
 * Add support for RESQUE_PROCLINE_PREFIX environment variable to prefix
   procline strings with a static identifier. (@rbroemeling)
-* Resque::Worker logs errors at the correct logging level (@chrisccerami)
+* ResqueSqs::Worker logs errors at the correct logging level (@chrisccerami)
 
 ## 1.25.2 (2014-3-3)
 
@@ -174,7 +174,7 @@ the next release.
 * use redis-namespace 1.3 (Andrea Rossi)
 * fix DOCS link in README (@cade)
 * Fix worker prune test to actually run its assertion & cover reality. (@yaauie)
-* Eliminate infinite recursion when Resque::Helpers mixed into Resque (@yaml)
+* Eliminate infinite recursion when ResqueSqs::Helpers mixed into Resque (@yaml)
 * use ruby, avoid shelling out. google++ (@hone)
 * Failed Assertions Don't Fail Tests :rage: (@yaauie)
 
@@ -190,7 +190,7 @@ the next release.
   https://github.com/resque/resque/pull/902 (@jonhyman)
 * Fixed uninitialize constant for the module/class that contains the perform
   method causing job failures to no be reported, #792 (@sideshowcoder)
-* Fix Resque::Failure::Base.all to have the correct signature.
+* Fix ResqueSqs::Failure::Base.all to have the correct signature.
   (@rentalutions)
 * Don't close stdio pipes when daemonizing so as to not hide errors. #967
   (@sideshowcoder)
@@ -249,7 +249,7 @@ the next release.
 * Various resque-web fixes (@tarcieri)
 * Optional RedisMultiQueue failure backend, can be enabled with
   FAILURE_BACKEND=redis_multi_queue env var (@tarcieri)
-* resque:failures:sort rake task will migrate an existing "failed" queue into
+* resque_sqs:failures:sort rake task will migrate an existing "failed" queue into
   separate failure queues per job queue, allowing an easy migration to
   the RedisMultiQueue failure backend (@tarcieri)
 * Disable forking completely with FORK_PER_JOB=false env var (@tarcieri)
@@ -267,7 +267,7 @@ the next release.
 
 * unregister signal handlers in child process when ENV["TERM_CHILD"] is set (@dylanasmith, #621)
 * new signal handling for TERM. See http://hone.heroku.com/resque/2012/08/21/resque-signals.html. (@wuputah, @yaaule, #638)
-* supports calling perform hooks when using Resque.inline (@jonhyman, #506)
+* supports calling perform hooks when using ResqueSqs.inline (@jonhyman, #506)
 
 ## 1.21.0 (2012-07-02)
 
@@ -289,12 +289,12 @@ the next release.
 * #decode raise takes a string when re-raising as a different exception class (Trevor Hart)
 * Use Sinatra's `pubilc_folder` if it exists (@defunkt, #420, #421)
 * Assign the job's worker before calling `before_fork` (@quirkey)
-* Fix Resque::Helpers#constantize to work correctly on 1.9.2 (@rtlong)
+* Fix ResqueSqs::Helpers#constantize to work correctly on 1.9.2 (@rtlong)
 * Added before & after hooks for dequeue (@humancopy, #398)
 * daemonize support using `ENV["BACKGROUND"]` (@chrisleishman)
 * requeue and remove failed jobs by queue name (@evanwhalen)
 * `-r` flag for resque-web for redis connection (@gjastrab)
-* Added `Resque.enqueue_to`: allows you to specif the queue and still run hooks (@dan-g)
+* Added `ResqueSqs.enqueue_to`: allows you to specif the queue and still run hooks (@dan-g)
 * Web UI: Set the default encoding to UTF-8 (@elubow)
 * fix finding worker pids on JRuby (John Andrews + Andrew Grieser)
 * Added distributed redis support (@stipple)
@@ -309,7 +309,7 @@ the next release.
 
 ## 1.18.6 (2011-08-30)
 
-* Bugfix: Use Rails 3 eager loading for resque:preload
+* Bugfix: Use Rails 3 eager loading for resque_sqs:preload
 
 ## 1.18.5 (2011-08-24)
 
@@ -340,7 +340,7 @@ the next release.
 * Bugfix: Finding worker pids on Solaris
 * Web UI: Fix NaN days ago for worker screens
 * Web UI: Add Cache-Control header to prevent proxy caching
-* Web UI: Update Resque.redis_id so it can be used in a distributed ring.
+* Web UI: Update ResqueSqs.redis_id so it can be used in a distributed ring.
 
 ## 1.17.1 (2011-05-27)
 
@@ -356,7 +356,7 @@ the next release.
 
 ## 1.16.1 (2011-05-17)
 
-* Bugfix: Resque::Failure::Hoptoad.configure works again
+* Bugfix: ResqueSqs::Failure::Hoptoad.configure works again
 * Bugfix: Loading rake tasks
 
 ## 1.16.0 (2011-05-16)
@@ -364,7 +364,7 @@ the next release.
 * Optional Hoptoad backend extracted into hoptoad_notifier. Install the gem to use it.
 * Added `Worker#paused?` method
 * Bugfix: Properly reseed random number generator after forking.
-* Bugfix: Resque.redis=(<a Redis::Namespace>)
+* Bugfix: ResqueSqs.redis=(<a Redis::Namespace>)
 * Bugfix: Monit example stdout/stderr redirection
 * Bugfix: Removing single failure now works with multiple failure backends
 * Web: 'Remove Queue' now requires confirmation
@@ -382,12 +382,12 @@ the next release.
 ## 1.14.0 (2011-03-17)
 
 * Sleep interval can now be a float
-* Added Resque.inline to allow in-process performing of jobs (for testing)
+* Added ResqueSqs.inline to allow in-process performing of jobs (for testing)
 * Fixed tests for Ruby 1.9.2
-* Added Resque.validate(klass) to validate a Job
+* Added ResqueSqs.validate(klass) to validate a Job
 * Decode errors are no longer ignored to help debugging
 * Web: Sinatra 1.2 compatibility
-* Fixed after_enqueue hook to actually run in `Resque.enqueue`
+* Fixed after_enqueue hook to actually run in `ResqueSqs.enqueue`
 * Fixed very_verbose timestamps to use 24 hour time (AM/PM wasn't included)
 * Fixed monit example
 * Fixed Worker#pid
@@ -401,7 +401,7 @@ the next release.
 
 ## 1.12.0 (2011-02-03)
 
-* Added pidfile writing from `rake resque:work`
+* Added pidfile writing from `rake resque_sqs:work`
 * Added Worker#pid method
 * Added configurable location for `rake install`
 * Bugfix: Errors in failure backend are rescue'd
@@ -414,7 +414,7 @@ the next release.
 
 ## 1.10.0 (2010-08-23)
 
-* Support redis:// string format in `Resque.redis=`
+* Support redis:// string format in `ResqueSqs.redis=`
 * Using new cross-platform JSON gem.
 * Added `after_enqueue` plugin hook.
 * Added `shutdown?` method which can be overridden.
@@ -475,7 +475,7 @@ the next release.
 
 * Redis 2 support
 * Depend on redis-namespace 0.5.0
-* Added Resque::VERSION constant (alias of Resque::Version)
+* Added ResqueSqs::VERSION constant (alias of ResqueSqs::Version)
 * Bugfix: Specify JSON dependency
 * Bugfix: Hoptoad plugin now works on 1.9
 
@@ -509,7 +509,7 @@ the next release.
 * `Worker.working` race condition fixed
 * `Worker#process` has been deprecated.
 * Monit example fixed
-* Redis::Client and Redis::Namespace can be passed to `Resque.redis=`
+* Redis::Client and Redis::Namespace can be passed to `ResqueSqs.redis=`
 
 ## 1.7.1 (2010-04-02)
 
@@ -548,7 +548,7 @@ the next release.
 
 ## 1.5.1 (2010-03-03)
 
-* `Job.destroy` and `Resque.dequeue` return the # of destroyed jobs.
+* `Job.destroy` and `ResqueSqs.dequeue` return the # of destroyed jobs.
 * Hoptoad notifier improvements
 * Specify the namespace with `resque-web` by passing `-N namespace`
 * Bugfix: Don't crash when trying to parse invalid JSON.
@@ -563,8 +563,8 @@ the next release.
 
 * Version now included in procline, e.g. `resque-1.5.0: Message`
 * Web bugfix: Ignore idle works in the "working" page
-* Added `Resque::Job.destroy(queue, klass, *args)`
-* Added `Resque.dequeue(klass, *args)`
+* Added `ResqueSqs::Job.destroy(queue, klass, *args)`
+* Added `ResqueSqs.dequeue(klass, *args)`
 
 ## 1.4.0 (2010-02-11)
 
@@ -589,7 +589,7 @@ the next release.
 * Use Vegas for resque-web
 * Web Bugfix: Show proper date/time value for failed_at on Failures
 * Web Bugfix: Make the / route more flexible
-* Add Resque::Server.tabs array (so plugins can add their own tabs)
+* Add ResqueSqs::Server.tabs array (so plugins can add their own tabs)
 * Start using [Semantic Versioning](http://semver.org/)
 
 ## 1.2.4 (2009-12-15)
@@ -609,7 +609,7 @@ the next release.
 
 ## 1.2.1 (2009-12-07)
 
-* Added `rake resque:workers` task for starting multiple workers.
+* Added `rake resque_sqs:workers` task for starting multiple workers.
 * 1.9.x compatibility
 * Bugfix: Yajl decoder doesn't care about valid UTF-8
 * config.ru loads RESQUECONFIG if the ENV variable is set.
@@ -621,7 +621,7 @@ the next release.
 
 * If USR1 is sent and no child is found, shutdown.
 * Raise when a job class does not respond to `perform`.
-* Added `Resque.remove_queue` for deleting a queue
+* Added `ResqueSqs.remove_queue` for deleting a queue
 
 ## 1.1.0 (2009-11-04)
 

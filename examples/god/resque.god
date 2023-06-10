@@ -6,10 +6,10 @@ num_workers.times do |num|
   God.watch do |w|
     w.dir      = "#{rails_root}"
     w.name     = "resque-#{num}"
-    w.group    = 'resque'
+    w.group    = 'resque_sqs'
     w.interval = 30.seconds
     w.env      = {"QUEUE"=>"critical,high,low", "RAILS_ENV"=>rails_env}
-    w.start    = "/usr/bin/rake -f #{rails_root}/Rakefile environment resque:work"
+    w.start    = "/usr/bin/rake -f #{rails_root}/Rakefile environment resque_sqs:work"
 
     w.uid = 'git'
     w.gid = 'git'

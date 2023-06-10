@@ -1,11 +1,11 @@
 require 'sinatra/base'
-require 'resque'
+require 'resque_sqs'
 require 'job'
 
 module Demo
   class App < Sinatra::Base
     get '/' do
-      info = Resque.info
+      info = ResqueSqs.info
       out = "<html><head><title>Resque Demo</title></head><body>"
       out << "<p>"
       out << "There are #{info[:pending]} pending and "
@@ -26,12 +26,12 @@ module Demo
     end
 
     post '/' do
-      Resque.enqueue(Job, params)
+      ResqueSqs.enqueue(Job, params)
       redirect "/"
     end
 
     post '/failing' do
-      Resque.enqueue(FailingJob, params)
+      ResqueSqs.enqueue(FailingJob, params)
       redirect "/"
     end
   end

@@ -1,32 +1,32 @@
 require 'test_helper'
 require 'tmpdir'
 
-describe "Resque::Worker" do
+describe "ResqueSqs::Worker" do
 
   class LongRunningJob
     @queue = :long_running_job
 
     def self.perform( sleep_time, rescue_time=nil )
-      Resque.redis.disconnect! # get its own connection
-      Resque.redis.rpush( 'sigterm-test:start', Process.pid )
+      ResqueSqs.redis.disconnect! # get its own connection
+      ResqueSqs.redis.rpush( 'sigterm-test:start', Process.pid )
       sleep sleep_time
-      Resque.redis.rpush( 'sigterm-test:result', 'Finished Normally' )
-    rescue Resque::TermException => e
-      Resque.redis.rpush( 'sigterm-test:result', %Q(Caught TermException: #{e.inspect}))
+      ResqueSqs.redis.rpush( 'sigterm-test:result', 'Finished Normally' )
+    rescue ResqueSqs::TermException => e
+      ResqueSqs.redis.rpush( 'sigterm-test:result', %Q(Caught TermException: #{e.inspect}))
       sleep rescue_time
     ensure
-      Resque.redis.rpush( 'sigterm-test:ensure_block_executed', 'exiting.' )
+      ResqueSqs.redis.rpush( 'sigterm-test:ensure_block_executed', 'exiting.' )
     end
   end
 
   def start_worker(rescue_time, term_child, term_timeout = 1)
-    Resque.enqueue( LongRunningJob, 3, rescue_time )
+    ResqueSqs.enqueue( LongRunningJob, 3, rescue_time )
 
     worker_pid = Kernel.fork do
       # disconnect since we just forked
-      Resque.redis.disconnect!
+      ResqueSqs.redis.disconnect!
 
-      worker = Resque::Worker.new(:long_running_job)
+      worker = ResqueSqs::Worker.new(:long_running_job)
       worker.term_timeout = term_timeout
       worker.term_child = term_child
 
@@ -37,14 +37,14 @@ describe "Resque::Worker" do
     end
 
     # ensure the worker is started
-    start_status = Resque.redis.blpop( 'sigterm-test:start', timeout: 5)
+    start_status = ResqueSqs.redis.blpop( 'sigterm-test:start', timeout: 5)
     refute_nil start_status
     child_pid = start_status[1].to_i
     assert child_pid > 0, "worker child process not created"
 
     Process.kill('TERM', worker_pid)
     Process.waitpid(worker_pid)
-    result = Resque.redis.lpop('sigterm-test:result')
+    result = ResqueSqs.redis.lpop('sigterm-test:result')
     [worker_pid, child_pid, result]
   end
 
@@ -73,7 +73,7 @@ describe "Resque::Worker" do
       assert_child_not_running child_pid
 
       # see if post-cleanup occurred. This should happen IFF the rescue_time is less than the term_timeout
-      post_cleanup_occurred = Resque.redis.lpop( 'sigterm-test:ensure_block_executed' )
+      post_cleanup_occurred = ResqueSqs.redis.lpop( 'sigterm-test:ensure_block_executed' )
       assert post_cleanup_occurred, 'post cleanup did not occur. SIGKILL sent too early?'
     end
 
@@ -83,18 +83,18 @@ describe "Resque::Worker" do
       assert_child_not_running child_pid
 
       # see if post-cleanup occurred. This should happen IFF the rescue_time is less than the term_timeout
-      post_cleanup_occurred = Resque.redis.lpop( 'sigterm-test:ensure_block_executed' )
+      post_cleanup_occurred = ResqueSqs.redis.lpop( 'sigterm-test:ensure_block_executed' )
       assert !post_cleanup_occurred, 'post cleanup occurred. SIGKILL sent too late?'
     end
   end
 
-  it "exits with Resque::TermException when using TERM_CHILD and not forking" do
+  it "exits with ResqueSqs::TermException when using TERM_CHILD and not forking" do
     old_job_per_fork = ENV['FORK_PER_JOB']
     begin
       ENV['FORK_PER_JOB'] = 'false'
       worker_pid, child_pid, _result = start_worker(0, true)
       assert_equal worker_pid, child_pid, "child_pid should equal worker_pid, since we are not forking"
-      assert Resque.redis.lpop( 'sigterm-test:ensure_block_executed' ), 'post cleanup did not occur. SIGKILL sent too early?'
+      assert ResqueSqs.redis.lpop( 'sigterm-test:ensure_block_executed' ), 'post cleanup did not occur. SIGKILL sent too early?'
     ensure
       ENV['FORK_PER_JOB'] = old_job_per_fork
     end

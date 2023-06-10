@@ -31,17 +31,17 @@ following assumptions:
 Namespace
 ---------
 
-All plugins should live under the `Resque::Plugins` module to avoid
+All plugins should live under the `ResqueSqs::Plugins` module to avoid
 clashing with first class Resque constants or other Ruby libraries.
 
 Good:
 
-* Resque::Plugins::Lock
-* Resque::Plugins::FastRetry
+* ResqueSqs::Plugins::Lock
+* ResqueSqs::Plugins::FastRetry
 
 Bad:
 
-* Resque::Lock
+* ResqueSqs::Lock
 * ResqueQueue
 
 
@@ -49,7 +49,7 @@ Gem Name
 --------
 
 Gem names should be in the format of `resque-FEATURE`, where `FEATURE`
-succinctly describes the feature your plugin adds to Resque.
+succinctly describes the feature your plugin adds to ResqueSqs.
 
 Good:
 
@@ -82,13 +82,13 @@ Lint
 ----
 
 Plugins should test compliance to this document using the
-`Resque::Plugin.lint` method.
+`ResqueSqs::Plugin.lint` method.
 
 For example:
 
 ``` ruby
 assert_nothing_raised do
-  Resque::Plugin.lint(Resque::Plugins::Lock)
+  ResqueSqs::Plugin.lint(ResqueSqs::Plugins::Lock)
 end
 ```
 

@@ -36,7 +36,7 @@ describe "Multiple plugins with multiple hooks" do
   end
 end
 
-describe "Resque::Plugin ordering before_perform" do
+describe "ResqueSqs::Plugin ordering before_perform" do
   include PerformJob
 
   module BeforePerformPlugin
@@ -62,7 +62,7 @@ describe "Resque::Plugin ordering before_perform" do
   end
 end
 
-describe "Resque::Plugin ordering after_perform" do
+describe "ResqueSqs::Plugin ordering after_perform" do
   include PerformJob
 
   module AfterPerformPlugin
@@ -88,7 +88,7 @@ describe "Resque::Plugin ordering after_perform" do
   end
 end
 
-describe "Resque::Plugin ordering around_perform" do
+describe "ResqueSqs::Plugin ordering around_perform" do
   include PerformJob
 
   module AroundPerformPlugin1
@@ -200,7 +200,7 @@ describe "Resque::Plugin ordering around_perform" do
   end
 end
 
-describe "Resque::Plugin ordering on_failure" do
+describe "ResqueSqs::Plugin ordering on_failure" do
   include PerformJob
 
   module OnFailurePlugin

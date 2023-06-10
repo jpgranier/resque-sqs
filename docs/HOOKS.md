@@ -15,7 +15,7 @@ If you wish to have a Proc called before the worker forks for the
 first time, you can add it in the initializer like so:
 
 ``` ruby
-Resque.before_first_fork do
+ResqueSqs.before_first_fork do
   puts "Call me once before the worker forks the first time"
 end
 ```
@@ -23,7 +23,7 @@ end
 You can also run a hook before _every_ fork:
 
 ``` ruby
-Resque.before_fork do |job|
+ResqueSqs.before_fork do |job|
   puts "Call me before the worker forks"
 end
 ```
@@ -35,7 +35,7 @@ the worker.
 And after forking:
 
 ``` ruby
-Resque.after_fork do |job|
+ResqueSqs.after_fork do |job|
   puts "Call me after the worker forks"
 end
 ```
@@ -47,13 +47,13 @@ long as the job currently being processes.
 All worker hooks can also be set using a setter, e.g.
 
 ``` ruby
-Resque.after_fork = proc { puts "called" }
+ResqueSqs.after_fork = proc { puts "called" }
 ```
 
 When the worker finds no more jobs in the queue:
 
 ``` ruby
-Resque.queue_empty do
+ResqueSqs.queue_empty do
   puts "Call me whenever the worker becomes idle"
 end
 ```
@@ -63,7 +63,7 @@ The `queue_empty` hook will be run in the **parent** process.
 When the worker exits:
 
 ``` ruby
-Resque.worker_exit do
+ResqueSqs.worker_exit do
   puts "Call me when the work is about to terminate"
 end
 ```
@@ -112,20 +112,20 @@ The available hooks are:
   Any exception raised propagates up to the code which dequeued the job.
 
 * `before_perform`: Called with the job args before perform. If it raises
-  `Resque::Job::DontPerform`, the job is aborted. If other exceptions
-  are raised, they will be propagated up the the `Resque::Failure`
+  `ResqueSqs::Job::DontPerform`, the job is aborted. If other exceptions
+  are raised, they will be propagated up the the `ResqueSqs::Failure`
   backend.
 
 * `after_perform`: Called with the job args after it performs. Uncaught
-  exceptions will propagate up to the `Resque::Failure` backend. *Note: If the job fails, `after_perform` hooks will not be run.*
+  exceptions will propagate up to the `ResqueSqs::Failure` backend. *Note: If the job fails, `after_perform` hooks will not be run.*
 
 * `around_perform`: Called with the job args. It is expected to yield in order
   to perform the job (but is not required to do so). It may handle exceptions
   thrown by `perform`, but any that are not caught will propagate up to the
-  `Resque::Failure` backend.
+  `ResqueSqs::Failure` backend.
 
 * `on_failure`: Called with the exception and job args if any exception occurs
-  while performing the job (or hooks), this includes Resque::DirtyExit.
+  while performing the job (or hooks), this includes ResqueSqs::DirtyExit.
 
 Hooks are easily implemented with superclasses or modules. A superclass could
 look something like this.
@@ -150,7 +150,7 @@ Modules are even better because jobs can use many of them.
 module ScaledJob
   def after_enqueue_scale_workers(*args)
     Logger.info "Scaling worker count up"
-    Scaler.up! if Resque.info[:pending].to_i > 25
+    Scaler.up! if ResqueSqs.info[:pending].to_i > 25
   end
 end
 
@@ -163,7 +163,7 @@ end
 module RetriedJob
   def on_failure_retry(e, *args)
     Logger.info "Performing #{self} caused an exception (#{e}). Retrying..."
-    Resque.enqueue self, *args
+    ResqueSqs.enqueue self, *args
   end
 end
 

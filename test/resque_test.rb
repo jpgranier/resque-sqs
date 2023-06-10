@@ -2,288 +2,288 @@ require 'test_helper'
 
 describe "Resque" do
   before do
-    @original_redis = Resque.redis
-    @original_stat_data_store = Resque.stat_data_store
+    @original_redis = ResqueSqs.redis
+    @original_stat_data_store = ResqueSqs.stat_data_store
   end
 
   after do
-    Resque.redis = @original_redis
-    Resque.stat_data_store = @original_stat_data_store
+    ResqueSqs.redis = @original_redis
+    ResqueSqs.stat_data_store = @original_stat_data_store
   end
 
   it "can push an item that depends on redis for encoding" do
-    Resque.redis.set("count", 1)
+    ResqueSqs.redis.set("count", 1)
     # No error should be raised
-    Resque.push(:test, JsonObject.new)
-    Resque.redis.del("count")
+    ResqueSqs.push(:test, JsonObject.new)
+    ResqueSqs.redis.del("count")
   end
 
   it "can set a namespace through a url-like string" do
-    assert Resque.redis
-    assert_equal :resque, Resque.redis.namespace
-    Resque.redis = 'localhost:9736/namespace'
-    assert_equal 'namespace', Resque.redis.namespace
+    assert ResqueSqs.redis
+    assert_equal :resque, ResqueSqs.redis.namespace
+    ResqueSqs.redis = 'localhost:9736/namespace'
+    assert_equal 'namespace', ResqueSqs.redis.namespace
   end
 
   it "redis= works correctly with a Redis::Namespace param" do
     new_redis = Redis.new(:host => "localhost", :port => 9736)
     new_namespace = Redis::Namespace.new("namespace", :redis => new_redis)
-    Resque.redis = new_namespace
+    ResqueSqs.redis = new_namespace
 
-    assert_equal new_namespace._client, Resque.redis._client
-    assert_equal 0, Resque.size(:default)
+    assert_equal new_namespace._client, ResqueSqs.redis._client
+    assert_equal 0, ResqueSqs.size(:default)
   end
 
   it "can put jobs on a queue" do
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
   end
 
   it "can grab jobs off a queue" do
-    Resque::Job.create(:jobs, 'some-job', 20, '/tmp')
+    ResqueSqs::Job.create(:jobs, 'some-job', 20, '/tmp')
 
-    job = Resque.reserve(:jobs)
+    job = ResqueSqs.reserve(:jobs)
 
-    assert_kind_of Resque::Job, job
+    assert_kind_of ResqueSqs::Job, job
     assert_equal SomeJob, job.payload_class
     assert_equal 20, job.args[0]
     assert_equal '/tmp', job.args[1]
   end
 
   it "can re-queue jobs" do
-    Resque::Job.create(:jobs, 'some-job', 20, '/tmp')
+    ResqueSqs::Job.create(:jobs, 'some-job', 20, '/tmp')
 
-    job = Resque.reserve(:jobs)
+    job = ResqueSqs.reserve(:jobs)
     job.recreate
 
-    assert_equal job, Resque.reserve(:jobs)
+    assert_equal job, ResqueSqs.reserve(:jobs)
   end
 
   it "can put jobs on a queue by way of an ivar" do
-    assert_equal 0, Resque.size(:ivar)
-    assert Resque.enqueue(SomeIvarJob, 20, '/tmp')
-    assert Resque.enqueue(SomeIvarJob, 20, '/tmp')
+    assert_equal 0, ResqueSqs.size(:ivar)
+    assert ResqueSqs.enqueue(SomeIvarJob, 20, '/tmp')
+    assert ResqueSqs.enqueue(SomeIvarJob, 20, '/tmp')
 
-    job = Resque.reserve(:ivar)
+    job = ResqueSqs.reserve(:ivar)
 
-    assert_kind_of Resque::Job, job
+    assert_kind_of ResqueSqs::Job, job
     assert_equal SomeIvarJob, job.payload_class
     assert_equal 20, job.args[0]
     assert_equal '/tmp', job.args[1]
 
-    assert Resque.reserve(:ivar)
-    assert_nil Resque.reserve(:ivar)
+    assert ResqueSqs.reserve(:ivar)
+    assert_nil ResqueSqs.reserve(:ivar)
   end
 
   it "can remove jobs from a queue by way of an ivar" do
-    assert_equal 0, Resque.size(:ivar)
-    assert Resque.enqueue(SomeIvarJob, 20, '/tmp')
-    assert Resque.enqueue(SomeIvarJob, 30, '/tmp')
-    assert Resque.enqueue(SomeIvarJob, 20, '/tmp')
-    assert Resque::Job.create(:ivar, 'blah-job', 20, '/tmp')
-    assert Resque.enqueue(SomeIvarJob, 20, '/tmp')
-    assert_equal 5, Resque.size(:ivar)
+    assert_equal 0, ResqueSqs.size(:ivar)
+    assert ResqueSqs.enqueue(SomeIvarJob, 20, '/tmp')
+    assert ResqueSqs.enqueue(SomeIvarJob, 30, '/tmp')
+    assert ResqueSqs.enqueue(SomeIvarJob, 20, '/tmp')
+    assert ResqueSqs::Job.create(:ivar, 'blah-job', 20, '/tmp')
+    assert ResqueSqs.enqueue(SomeIvarJob, 20, '/tmp')
+    assert_equal 5, ResqueSqs.size(:ivar)
 
-    assert_equal 1, Resque.dequeue(SomeIvarJob, 30, '/tmp')
-    assert_equal 4, Resque.size(:ivar)
-    assert_equal 3, Resque.dequeue(SomeIvarJob)
-    assert_equal 1, Resque.size(:ivar)
+    assert_equal 1, ResqueSqs.dequeue(SomeIvarJob, 30, '/tmp')
+    assert_equal 4, ResqueSqs.size(:ivar)
+    assert_equal 3, ResqueSqs.dequeue(SomeIvarJob)
+    assert_equal 1, ResqueSqs.size(:ivar)
   end
 
   it "jobs have a nice #inspect" do
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
-    job = Resque.reserve(:jobs)
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    job = ResqueSqs.reserve(:jobs)
     assert_equal '(Job{jobs} | SomeJob | [20, "/tmp"])', job.inspect
   end
 
   it "jobs can be destroyed" do
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
-    assert Resque::Job.create(:jobs, 'BadJob', 20, '/tmp')
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
-    assert Resque::Job.create(:jobs, 'BadJob', 30, '/tmp')
-    assert Resque::Job.create(:jobs, 'BadJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'BadJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'BadJob', 30, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'BadJob', 20, '/tmp')
 
-    assert_equal 5, Resque.size(:jobs)
-    assert_equal 2, Resque::Job.destroy(:jobs, 'SomeJob')
-    assert_equal 3, Resque.size(:jobs)
-    assert_equal 1, Resque::Job.destroy(:jobs, 'BadJob', 30, '/tmp')
-    assert_equal 2, Resque.size(:jobs)
+    assert_equal 5, ResqueSqs.size(:jobs)
+    assert_equal 2, ResqueSqs::Job.destroy(:jobs, 'SomeJob')
+    assert_equal 3, ResqueSqs.size(:jobs)
+    assert_equal 1, ResqueSqs::Job.destroy(:jobs, 'BadJob', 30, '/tmp')
+    assert_equal 2, ResqueSqs.size(:jobs)
   end
 
   it "jobs can it for equality" do
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
-    assert Resque::Job.create(:jobs, 'some-job', 20, '/tmp')
-    assert_equal Resque.reserve(:jobs), Resque.reserve(:jobs)
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'some-job', 20, '/tmp')
+    assert_equal ResqueSqs.reserve(:jobs), ResqueSqs.reserve(:jobs)
 
-    assert Resque::Job.create(:jobs, 'SomeMethodJob', 20, '/tmp')
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
-    refute_equal Resque.reserve(:jobs), Resque.reserve(:jobs)
+    assert ResqueSqs::Job.create(:jobs, 'SomeMethodJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    refute_equal ResqueSqs.reserve(:jobs), ResqueSqs.reserve(:jobs)
 
-    assert Resque::Job.create(:jobs, 'SomeJob', 20, '/tmp')
-    assert Resque::Job.create(:jobs, 'SomeJob', 30, '/tmp')
-    refute_equal Resque.reserve(:jobs), Resque.reserve(:jobs)
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 20, '/tmp')
+    assert ResqueSqs::Job.create(:jobs, 'SomeJob', 30, '/tmp')
+    refute_equal ResqueSqs.reserve(:jobs), ResqueSqs.reserve(:jobs)
   end
 
   it "can put jobs on a queue by way of a method" do
-    assert_equal 0, Resque.size(:method)
-    assert Resque.enqueue(SomeMethodJob, 20, '/tmp')
-    assert Resque.enqueue(SomeMethodJob, 20, '/tmp')
+    assert_equal 0, ResqueSqs.size(:method)
+    assert ResqueSqs.enqueue(SomeMethodJob, 20, '/tmp')
+    assert ResqueSqs.enqueue(SomeMethodJob, 20, '/tmp')
 
-    job = Resque.reserve(:method)
+    job = ResqueSqs.reserve(:method)
 
-    assert_kind_of Resque::Job, job
+    assert_kind_of ResqueSqs::Job, job
     assert_equal SomeMethodJob, job.payload_class
     assert_equal 20, job.args[0]
     assert_equal '/tmp', job.args[1]
 
-    assert Resque.reserve(:method)
-    assert_nil Resque.reserve(:method)
+    assert ResqueSqs.reserve(:method)
+    assert_nil ResqueSqs.reserve(:method)
   end
 
   it "can define a queue for jobs by way of a method" do
-    assert_equal 0, Resque.size(:method)
-    assert Resque.enqueue_to(:new_queue, SomeMethodJob, 20, '/tmp')
+    assert_equal 0, ResqueSqs.size(:method)
+    assert ResqueSqs.enqueue_to(:new_queue, SomeMethodJob, 20, '/tmp')
 
-    job = Resque.reserve(:new_queue)
+    job = ResqueSqs.reserve(:new_queue)
     assert_equal SomeMethodJob, job.payload_class
     assert_equal 20, job.args[0]
     assert_equal '/tmp', job.args[1]
   end
 
   it "needs to infer a queue with enqueue" do
-    assert_raises Resque::NoQueueError do
-      Resque.enqueue(SomeJob, 20, '/tmp')
+    assert_raises ResqueSqs::NoQueueError do
+      ResqueSqs.enqueue(SomeJob, 20, '/tmp')
     end
   end
 
   it "validates job for queue presence" do
-    err = assert_raises Resque::NoQueueError do
-      Resque.validate(SomeJob)
+    err = assert_raises ResqueSqs::NoQueueError do
+      ResqueSqs.validate(SomeJob)
     end
     assert_match(/SomeJob/, err.message)
   end
 
   it "can put items on a queue" do
-    assert Resque.push(:people, { 'name' => 'jon' })
+    assert ResqueSqs.push(:people, { 'name' => 'jon' })
   end
 
   it "queues are always a list" do
-    assert_equal [], Resque.queues
+    assert_equal [], ResqueSqs.queues
   end
 
   it "badly wants a class name, too" do
-    assert_raises Resque::NoClassError do
-      Resque::Job.create(:jobs, nil)
+    assert_raises ResqueSqs::NoClassError do
+      ResqueSqs::Job.create(:jobs, nil)
     end
   end
 
   it "decode bad json" do
-    assert_raises Resque::Helpers::DecodeException do
-      Resque.decode("{\"error\":\"Module not found \\u002\"}")
+    assert_raises ResqueSqs::Helpers::DecodeException do
+      ResqueSqs.decode("{\"error\":\"Module not found \\u002\"}")
     end
   end
 
   it "inlining jobs" do
     begin
-      Resque.inline = true
-      Resque.enqueue(SomeIvarJob, 20, '/tmp')
-      assert_equal 0, Resque.size(:ivar)
+      ResqueSqs.inline = true
+      ResqueSqs.enqueue(SomeIvarJob, 20, '/tmp')
+      assert_equal 0, ResqueSqs.size(:ivar)
     ensure
-      Resque.inline = false
+      ResqueSqs.inline = false
     end
   end
 
   describe "with people in the queue" do
     before do
-      Resque.push(:people, { 'name' => 'chris' })
-      Resque.push(:people, { 'name' => 'bob' })
-      Resque.push(:people, { 'name' => 'mark' })
+      ResqueSqs.push(:people, { 'name' => 'chris' })
+      ResqueSqs.push(:people, { 'name' => 'bob' })
+      ResqueSqs.push(:people, { 'name' => 'mark' })
     end
 
     it "can pull items off a queue" do
-      assert_equal({ 'name' => 'chris' }, Resque.pop(:people))
-      assert_equal({ 'name' => 'bob' }, Resque.pop(:people))
-      assert_equal({ 'name' => 'mark' }, Resque.pop(:people))
-      assert_nil Resque.pop(:people)
+      assert_equal({ 'name' => 'chris' }, ResqueSqs.pop(:people))
+      assert_equal({ 'name' => 'bob' }, ResqueSqs.pop(:people))
+      assert_equal({ 'name' => 'mark' }, ResqueSqs.pop(:people))
+      assert_nil ResqueSqs.pop(:people)
     end
 
     it "knows how big a queue is" do
-      assert_equal 3, Resque.size(:people)
+      assert_equal 3, ResqueSqs.size(:people)
 
-      assert_equal({ 'name' => 'chris' }, Resque.pop(:people))
-      assert_equal 2, Resque.size(:people)
+      assert_equal({ 'name' => 'chris' }, ResqueSqs.pop(:people))
+      assert_equal 2, ResqueSqs.size(:people)
 
-      assert_equal({ 'name' => 'bob' }, Resque.pop(:people))
-      assert_equal({ 'name' => 'mark' }, Resque.pop(:people))
-      assert_equal 0, Resque.size(:people)
+      assert_equal({ 'name' => 'bob' }, ResqueSqs.pop(:people))
+      assert_equal({ 'name' => 'mark' }, ResqueSqs.pop(:people))
+      assert_equal 0, ResqueSqs.size(:people)
     end
 
     it "can peek at a queue" do
-      assert_equal({ 'name' => 'chris' }, Resque.peek(:people))
-      assert_equal 3, Resque.size(:people)
+      assert_equal({ 'name' => 'chris' }, ResqueSqs.peek(:people))
+      assert_equal 3, ResqueSqs.size(:people)
     end
 
     it "can peek multiple items on a queue" do
-      assert_equal({ 'name' => 'bob' }, Resque.peek(:people, 1, 1))
+      assert_equal({ 'name' => 'bob' }, ResqueSqs.peek(:people, 1, 1))
 
-      assert_equal([{ 'name' => 'bob' }, { 'name' => 'mark' }], Resque.peek(:people, 1, 2))
-      assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }], Resque.peek(:people, 0, 2))
-      assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }, { 'name' => 'mark' }], Resque.peek(:people, 0, 3))
-      assert_equal({ 'name' => 'mark' }, Resque.peek(:people, 2, 1))
-      assert_nil Resque.peek(:people, 3)
-      assert_equal [], Resque.peek(:people, 3, 2)
+      assert_equal([{ 'name' => 'bob' }, { 'name' => 'mark' }], ResqueSqs.peek(:people, 1, 2))
+      assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }], ResqueSqs.peek(:people, 0, 2))
+      assert_equal([{ 'name' => 'chris' }, { 'name' => 'bob' }, { 'name' => 'mark' }], ResqueSqs.peek(:people, 0, 3))
+      assert_equal({ 'name' => 'mark' }, ResqueSqs.peek(:people, 2, 1))
+      assert_nil ResqueSqs.peek(:people, 3)
+      assert_equal [], ResqueSqs.peek(:people, 3, 2)
     end
 
     it "can delete a queue" do
-      Resque.push(:cars, { 'make' => 'bmw' })
-      assert_equal %w( cars people ).sort, Resque.queues.sort
-      Resque.remove_queue(:people)
-      assert_equal %w( cars ), Resque.queues
-      assert_nil Resque.pop(:people)
+      ResqueSqs.push(:cars, { 'make' => 'bmw' })
+      assert_equal %w( cars people ).sort, ResqueSqs.queues.sort
+      ResqueSqs.remove_queue(:people)
+      assert_equal %w( cars ), ResqueSqs.queues
+      assert_nil ResqueSqs.pop(:people)
     end
 
     it "knows what queues it is managing" do
-      assert_equal %w( people ), Resque.queues
-      Resque.push(:cars, { 'make' => 'bmw' })
-      assert_equal %w( cars people ).sort, Resque.queues.sort
+      assert_equal %w( people ), ResqueSqs.queues
+      ResqueSqs.push(:cars, { 'make' => 'bmw' })
+      assert_equal %w( cars people ).sort, ResqueSqs.queues.sort
     end
 
     it "keeps track of resque keys" do
       # ignore the heartbeat key that gets set in a background thread
-      keys = Resque.keys - ['workers:heartbeat']
+      keys = ResqueSqs.keys - ['workers:heartbeat']
 
       assert_equal ["queue:people", "queues"].sort, keys.sort
     end
 
     it "keeps stats" do
-      Resque::Job.create(:jobs, SomeJob, 20, '/tmp')
-      Resque::Job.create(:jobs, BadJob)
-      Resque::Job.create(:jobs, GoodJob)
+      ResqueSqs::Job.create(:jobs, SomeJob, 20, '/tmp')
+      ResqueSqs::Job.create(:jobs, BadJob)
+      ResqueSqs::Job.create(:jobs, GoodJob)
 
-      Resque::Job.create(:others, GoodJob)
-      Resque::Job.create(:others, GoodJob)
+      ResqueSqs::Job.create(:others, GoodJob)
+      ResqueSqs::Job.create(:others, GoodJob)
 
-      stats = Resque.info
+      stats = ResqueSqs.info
       assert_equal 8, stats[:pending]
 
-      @worker = Resque::Worker.new(:jobs)
+      @worker = ResqueSqs::Worker.new(:jobs)
       @worker.register_worker
       2.times { @worker.process }
 
       job = @worker.reserve
       @worker.working_on job
 
-      stats = Resque.info
+      stats = ResqueSqs.info
       assert_equal 1, stats[:working]
       assert_equal 1, stats[:workers]
 
       @worker.done_working
 
-      stats = Resque.info
+      stats = ResqueSqs.info
       assert_equal 3, stats[:queues]
       assert_equal 3, stats[:processed]
       assert_equal 1, stats[:failed]
-      assert_equal [Resque.redis_id], stats[:servers]
+      assert_equal [ResqueSqs.redis_id], stats[:servers]
     end
 
   end
@@ -291,39 +291,39 @@ describe "Resque" do
   describe "stats" do
     it "allows to set custom stat_data_store" do
       dummy = Object.new
-      Resque.stat_data_store = dummy
-      assert_equal dummy, Resque.stat_data_store
+      ResqueSqs.stat_data_store = dummy
+      assert_equal dummy, ResqueSqs.stat_data_store
     end
 
     it "queue_sizes with one queue" do
-      Resque.enqueue_to(:queue1, SomeJob)
+      ResqueSqs.enqueue_to(:queue1, SomeJob)
 
-      queue_sizes = Resque.queue_sizes
+      queue_sizes = ResqueSqs.queue_sizes
 
       assert_equal({ "queue1" => 1 }, queue_sizes)
     end
 
     it "queue_sizes with two queue" do
-      Resque.enqueue_to(:queue1, SomeJob)
-      Resque.enqueue_to(:queue2, SomeJob)
+      ResqueSqs.enqueue_to(:queue1, SomeJob)
+      ResqueSqs.enqueue_to(:queue2, SomeJob)
 
-      queue_sizes = Resque.queue_sizes
+      queue_sizes = ResqueSqs.queue_sizes
 
       assert_equal({ "queue1" => 1, "queue2" => 1, }, queue_sizes)
     end
 
     it "queue_sizes with two queue with multiple jobs" do
-      5.times { Resque.enqueue_to(:queue1, SomeJob) }
-      9.times { Resque.enqueue_to(:queue2, SomeJob) }
+      5.times { ResqueSqs.enqueue_to(:queue1, SomeJob) }
+      9.times { ResqueSqs.enqueue_to(:queue2, SomeJob) }
 
-      queue_sizes = Resque.queue_sizes
+      queue_sizes = ResqueSqs.queue_sizes
 
       assert_equal({ "queue1" => 5, "queue2" => 9 }, queue_sizes)
     end
 
     it "sample_queues with simple job with no args" do
-      Resque.enqueue_to(:queue1, SomeJob)
-      queues = Resque.sample_queues
+      ResqueSqs.enqueue_to(:queue1, SomeJob)
+      queues = ResqueSqs.sample_queues
 
       assert_equal 1, queues.length
       assert_instance_of Hash, queues['queue1']
@@ -336,9 +336,9 @@ describe "Resque" do
     end
 
     it "sample_queues with simple job with args" do
-      Resque.enqueue_to(:queue1, SomeJob, :arg1 => '1')
+      ResqueSqs.enqueue_to(:queue1, SomeJob, :arg1 => '1')
 
-      queues = Resque.sample_queues
+      queues = ResqueSqs.sample_queues
 
       assert_equal 1, queues['queue1'][:size]
 
@@ -348,10 +348,10 @@ describe "Resque" do
     end
 
     it "sample_queues with simple jobs" do
-      Resque.enqueue_to(:queue1, SomeJob, :arg1 => '1')
-      Resque.enqueue_to(:queue1, SomeJob, :arg1 => '2')
+      ResqueSqs.enqueue_to(:queue1, SomeJob, :arg1 => '1')
+      ResqueSqs.enqueue_to(:queue1, SomeJob, :arg1 => '2')
 
-      queues = Resque.sample_queues
+      queues = ResqueSqs.sample_queues
 
       assert_equal 2, queues['queue1'][:size]
 
@@ -361,9 +361,9 @@ describe "Resque" do
     end
 
     it "sample_queues with more jobs only returns sample size number of jobs" do
-      11.times { Resque.enqueue_to(:queue1, SomeJob) }
+      11.times { ResqueSqs.enqueue_to(:queue1, SomeJob) }
 
-      queues = Resque.sample_queues(10)
+      queues = ResqueSqs.sample_queues(10)
 
       assert_equal 11, queues['queue1'][:size]
 

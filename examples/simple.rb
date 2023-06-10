@@ -13,7 +13,7 @@ class Repository < Model
   # ... stuff ...
 
   def async_create_archive(branch)
-    Resque.enqueue(Archive, self.id, branch)
+    ResqueSqs.enqueue(Archive, self.id, branch)
   end
 
   # ... more stuff ...

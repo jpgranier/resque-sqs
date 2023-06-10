@@ -1,12 +1,12 @@
 require 'test_helper'
 require 'rack/test'
-require 'resque/server'
+require 'resque_sqs/server'
 
 describe "Resque web" do
   include Rack::Test::Methods
 
   def app
-    Resque::Server.new
+    ResqueSqs::Server.new
   end
 
   # Root path test
@@ -29,7 +29,7 @@ describe "Resque web" do
 
   describe "With append-prefix option on GET to /overview" do
     reverse_proxy_prefix = 'proxy_site/resque'
-    Resque::Server.url_prefix = reverse_proxy_prefix
+    ResqueSqs::Server.url_prefix = reverse_proxy_prefix
     before { get "/overview" }
 
     it "should contain reverse proxy prefix for asset urls and links" do
@@ -48,12 +48,12 @@ describe "Resque web" do
 
   # Queues
   describe "on GET to /queues" do
-    before { Resque::Failure.stubs(:count).returns(1) }
+    before { ResqueSqs::Failure.stubs(:count).returns(1) }
 
-    describe "with Resque::Failure::RedisMultiQueue backend enabled" do
+    describe "with ResqueSqs::Failure::RedisMultiQueue backend enabled" do
       it "should display failed queues" do
-        with_failure_backend Resque::Failure::RedisMultiQueue do
-          Resque::Failure.stubs(:queues).returns(
+        with_failure_backend ResqueSqs::Failure::RedisMultiQueue do
+          ResqueSqs::Failure.stubs(:queues).returns(
             [:queue1_failed, :queue2_failed]
           )
 
@@ -65,8 +65,8 @@ describe "Resque web" do
       end
 
       it "should respond with success when no failed queues exists" do
-        with_failure_backend Resque::Failure::RedisMultiQueue do
-          Resque::Failure.stubs(:queues).returns([])
+        with_failure_backend ResqueSqs::Failure::RedisMultiQueue do
+          ResqueSqs::Failure.stubs(:queues).returns([])
 
           get "/queues"
         end
@@ -75,9 +75,9 @@ describe "Resque web" do
       end
     end
 
-    describe "Without Resque::Failure::RedisMultiQueue backend enabled" do
+    describe "Without ResqueSqs::Failure::RedisMultiQueue backend enabled" do
       it "should display queues when there are more than 1 failed queue" do
-        Resque::Failure.stubs(:queues).returns(
+        ResqueSqs::Failure.stubs(:queues).returns(
           [:queue1_failed, :queue2_failed]
         )
         get "/queues"
@@ -87,7 +87,7 @@ describe "Resque web" do
       end
 
       it "should display 'failed' queue when there is 1 failed queue" do
-        Resque::Failure.stubs(:queues).returns([:queue1])
+        ResqueSqs::Failure.stubs(:queues).returns([:queue1])
         get "/queues"
 
         assert !last_response.body.include?('queue1')
@@ -95,7 +95,7 @@ describe "Resque web" do
       end
 
       it "should respond with success when no failed queues exists" do
-        Resque::Failure.stubs(:queues).returns([])
+        ResqueSqs::Failure.stubs(:queues).returns([])
         get "/queues"
 
         assert last_response.ok?, last_response.errors

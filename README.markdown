@@ -77,7 +77,7 @@ to our application's pre-existing `Repository` class:
 ``` ruby
 class Repository
   def async_create_archive(branch)
-    Resque.enqueue(Archive, self.id, branch)
+    ResqueSqs.enqueue(Archive, self.id, branch)
   end
 end
 ```
@@ -89,7 +89,7 @@ queue.
 Later, a worker will run something like this code to process the job:
 
 ``` ruby
-klass, args = Resque.reserve(:file_serve)
+klass, args = ResqueSqs.reserve(:file_serve)
 klass.perform(*args) if klass.respond_to? :perform
 ```
 
@@ -102,11 +102,11 @@ Archive.perform(44, 'masterbrew')
 Let's start a worker to run `file_serve` jobs:
 
     $ cd app_root
-    $ QUEUE=file_serve rake resque:work
+    $ QUEUE=file_serve rake resque_sqs:work
 
 This starts one Resque worker and tells it to work off the
 `file_serve` queue. As soon as it's ready it'll try to run the
-`Resque.reserve` code snippet above and process jobs until it can't
+`ResqueSqs.reserve` code snippet above and process jobs until it can't
 find any more, at which point it will sleep for a small period and
 repeatedly poll the queue for more jobs.
 
@@ -115,7 +115,7 @@ Installation
 
 Add the gem to your Gemfile:
 
-    gem 'resque'
+    gem 'resque_sqs'
 
 Next, install it with Bundler:
 
@@ -126,17 +126,17 @@ Next, install it with Bundler:
 In your Rakefile, or some other file in `lib/tasks` (ex: `lib/tasks/resque.rake`), load the resque rake tasks:
 
 ``` ruby
-require 'resque'
-require 'resque/tasks'
+require 'resque_sqs'
+require 'resque_sqs/tasks'
 require 'your/app' # Include this line if you want your workers to have access to your application
 ```
 
 #### Rails
 
-To make resque specific changes, you can override the `resque:setup` job in `lib/tasks` (ex: `lib/tasks/resque.rake`). GitHub's setup task looks like this:
+To make resque specific changes, you can override the `resque_sqs:setup` job in `lib/tasks` (ex: `lib/tasks/resque.rake`). GitHub's setup task looks like this:
 
 ``` ruby
-task "resque:setup" => :environment do
+task "resque_sqs:setup" => :environment do
   Grit::Git.git_timeout = 10.minutes
 end
 ```
@@ -163,11 +163,11 @@ shutdown
 
 Starting a worker is simple:
 
-    $ QUEUE=* rake resque:work
+    $ QUEUE=* rake resque_sqs:work
 
 Or, you can start multiple workers:
 
-    $ COUNT=2 QUEUE=* rake resque:workers
+    $ COUNT=2 QUEUE=* rake resque_sqs:workers
 
 This will spawn two Resque workers, each in its own process. Hitting
 ctrl-c should be sufficient to stop them all.
@@ -180,7 +180,7 @@ of queues you give it. We call this list of queues the "queue list."
 Let's say we add a `warm_cache` queue in addition to our `file_serve`
 queue. We'd now start a worker like so:
 
-    $ QUEUES=file_serve,warm_cache rake resque:work
+    $ QUEUES=file_serve,warm_cache rake resque_sqs:work
 
 When the worker looks for new jobs, it will first check
 `file_serve`. If it finds a job, it'll process it then check
@@ -192,7 +192,7 @@ whole process).
 In this way you can prioritize certain queues. At GitHub we start our
 workers with something like this:
 
-    $ QUEUES=critical,archive,high,low rake resque:work
+    $ QUEUES=critical,archive,high,low rake resque_sqs:work
 
 Notice the `archive` queue - it is specialized and in our future
 architecture will only be run from a single machine.
@@ -200,36 +200,36 @@ architecture will only be run from a single machine.
 At that point we'll start workers on our generalized background
 machines with this command:
 
-    $ QUEUES=critical,high,low rake resque:work
+    $ QUEUES=critical,high,low rake resque_sqs:work
 
 And workers on our specialized archive machine with this command:
 
-    $ QUEUE=archive rake resque:work
+    $ QUEUE=archive rake resque_sqs:work
 
 #### Running All Queues
 
 If you want your workers to work off of every queue, including new
 queues created on the fly, you can use a splat:
 
-    $ QUEUE=* rake resque:work
+    $ QUEUE=* rake resque_sqs:work
 
 Queues will be processed in alphabetical order.
 
 Or, prioritize some queues above `*`:
 
-    # QUEUE=critical,* rake resque:work
+    # QUEUE=critical,* rake resque_sqs:work
 
 #### Running All Queues Except for Some
 
 If you want your workers to work off of all queues except for some,
 you can use negation:
 
-    $ QUEUE=*,!low rake resque:work
+    $ QUEUE=*,!low rake resque_sqs:work
 
 Negated globs also work. The following will instruct workers to work
 off of all queues except those beginning with `file_`:
 
-    $ QUEUE=*,!file_* rake resque:work
+    $ QUEUE=*,!file_* rake resque_sqs:work
 
 Note that the order in which negated queues are specified does not
 matter, so `QUEUE=*,!file_*` and `QUEUE=!file_*,*` will have the same
@@ -240,7 +240,7 @@ effect.
 There are scenarios where it's helpful to record the PID of a resque
 worker process.  Use the PIDFILE option for easy access to the PID:
 
-    $ PIDFILE=./resque.pid QUEUE=file_serve rake resque:work
+    $ PIDFILE=./resque.pid QUEUE=file_serve rake resque_sqs:work
 
 #### Running in the background
 
@@ -249,14 +249,14 @@ the resque worker to run itself in the background (usually in combination with
 PIDFILE).  Use the BACKGROUND option so that rake will return as soon as the
 worker is started.
 
-    $ PIDFILE=./resque.pid BACKGROUND=yes QUEUE=file_serve rake resque:work
+    $ PIDFILE=./resque.pid BACKGROUND=yes QUEUE=file_serve rake resque_sqs:work
 
 #### Polling frequency
 
 You can pass an INTERVAL option which is a float representing the polling frequency.
 The default is 5 seconds, but for a semi-active app you may want to use a smaller value.
 
-    $ INTERVAL=0.1 QUEUE=file_serve rake resque:work
+    $ INTERVAL=0.1 QUEUE=file_serve rake resque_sqs:work
 
 The Front End
 -------------
@@ -303,11 +303,11 @@ If you want to load Resque on a subpath, possibly alongside other
 apps, it's easy to do with Rack's `URLMap`:
 
 ``` ruby
-require 'resque/server'
+require 'resque_sqs/server'
 
 run Rack::URLMap.new \
   "/"       => Your::App.new,
-  "/resque" => Resque::Server.new
+  "/resque" => ResqueSqs::Server.new
 ```
 
 Check `examples/demo/config.ru` for a functional example (including
@@ -315,10 +315,10 @@ HTTP basic auth).
 
 #### Rails
 
-You can also mount Resque on a subpath in your existing Rails app by adding `require 'resque/server'` to the top of your routes file or in an initializer then adding this to `routes.rb`:
+You can also mount Resque on a subpath in your existing Rails app by adding `require 'resque_sqs/server'` to the top of your routes file or in an initializer then adding this to `routes.rb`:
 
 ``` ruby
-mount Resque::Server.new, :at => "/resque"
+mount ResqueSqs::Server.new, :at => "/resque"
 ```
 
 Jobs
@@ -370,13 +370,13 @@ Because of this your jobs must only accept arguments that can be JSON encoded.
 So instead of doing this:
 
 ``` ruby
-Resque.enqueue(Archive, self, branch)
+ResqueSqs.enqueue(Archive, self, branch)
 ```
 
 do this:
 
 ``` ruby
-Resque.enqueue(Archive, self.id, branch)
+ResqueSqs.enqueue(Archive, self.id, branch)
 ```
 
 This is why our above example (and all the examples in `examples/`)
@@ -403,7 +403,7 @@ We plan to provide first class `async` support in a future release.
 #### Failure
 
 If a job raises an exception, it is logged and handed off to the
-`Resque::Failure` module. Failures are logged either locally in Redis
+`ResqueSqs::Failure` module. Failures are logged either locally in Redis
 or using some different backend. To see exceptions while developing,
 see details below under Logging.
 
@@ -412,12 +412,12 @@ the following into an initialisation file or into your rake job:
 
 ``` ruby
 # send errors which occur in background jobs to redis and airbrake
-require 'resque/failure/multiple'
-require 'resque/failure/redis'
-require 'resque/failure/airbrake'
+require 'resque_sqs/failure/multiple'
+require 'resque_sqs/failure/redis'
+require 'resque_sqs/failure/airbrake'
 
-Resque::Failure::Multiple.classes = [Resque::Failure::Redis, Resque::Failure::Airbrake]
-Resque::Failure.backend = Resque::Failure::Multiple
+ResqueSqs::Failure::Multiple.classes = [ResqueSqs::Failure::Redis, ResqueSqs::Failure::Airbrake]
+ResqueSqs::Failure.backend = ResqueSqs::Failure::Multiple
 ```
 
 Keep this in mind when writing your jobs: you may want to throw
@@ -447,7 +447,7 @@ class Repository
 end
 ```
 
-It is important to run `ArchiveJob.perform_later(self.id, branch)` rather than `Resque.enqueue(Archive, self.id, branch)`.
+It is important to run `ArchiveJob.perform_later(self.id, branch)` rather than `ResqueSqs.enqueue(Archive, self.id, branch)`.
 Otherwise Resque will process the job without actually doing anything.
 Even if you put an obviously buggy line like `0/0` in the `perform` method,
 the job will still succeed.
@@ -465,9 +465,9 @@ Resque has a `redis` setter which can be given a string or a Redis
 object. This means if you're already using Redis in your app, Resque
 can re-use the existing connection.
 
-String: `Resque.redis = 'localhost:6379'`
+String: `ResqueSqs.redis = 'localhost:6379'`
 
-Redis: `Resque.redis = $redis`
+Redis: `ResqueSqs.redis = $redis`
 
 For our rails app we have a `config/initializers/resque.rb` file where
 we load `config/resque.yml` by hand and set the Redis information
@@ -489,7 +489,7 @@ rails_env = ENV['RAILS_ENV'] || 'development'
 config_file = rails_root + '/config/resque.yml'
 
 resque_config = YAML::load(ERB.new(IO.read(config_file)).result)
-Resque.redis = resque_config[rails_env]
+ResqueSqs.redis = resque_config[rails_env]
 ```
 
 Easy peasy! Why not just use `RAILS_ROOT` and `RAILS_ENV`? Because
@@ -503,25 +503,25 @@ Also, you could disable jobs queueing by setting 'inline' attribute.
 For example, if you want to run all jobs in the same process for cucumber, try:
 
 ``` ruby
-Resque.inline = ENV['RAILS_ENV'] == "cucumber"
+ResqueSqs.inline = ENV['RAILS_ENV'] == "cucumber"
 ```
 
 #### Logging
 
 Workers support basic logging to STDOUT.
 
-You can control the logging threshold using `Resque.logger.level`:
+You can control the logging threshold using `ResqueSqs.logger.level`:
 
 ```ruby
 # config/initializers/resque.rb
-Resque.logger.level = Logger::DEBUG
+ResqueSqs.logger.level = Logger::DEBUG
 ```
 
 If you want Resque to log to a file, in Rails do:
 
 ```ruby
 # config/initializers/resque.rb
-Resque.logger = Logger.new(Rails.root.join('log', "#{Rails.env}_resque.log"))
+ResqueSqs.logger = Logger.new(Rails.root.join('log', "#{Rails.env}_resque.log"))
 ```
 
 #### Namespaces
@@ -534,10 +534,10 @@ This feature is provided by the [redis-namespace](http://github.com/resque/redis
 Resque uses by default to separate the keys it manages from other keys
 in your Redis server.
 
-Simply use the `Resque.redis.namespace` accessor:
+Simply use the `ResqueSqs.redis.namespace` accessor:
 
 ``` ruby
-Resque.redis.namespace = "resque:GitHub"
+ResqueSqs.redis.namespace = "resque_sqs:GitHub"
 ```
 
 We recommend sticking this in your initializer somewhere after Redis
@@ -567,7 +567,7 @@ class NullDataStore
   end
 end
 
-Resque.stat_data_store = NullDataStore.new
+ResqueSqs.stat_data_store = NullDataStore.new
 ```
 
 Plugins and Hooks
@@ -577,7 +577,7 @@ For a list of available plugins see
 <https://github.com/resque/resque/wiki/plugins>.
 
 If you'd like to write your own plugin, or want to customize Resque
-using hooks (such as `Resque.after_fork`), see
+using hooks (such as `ResqueSqs.after_fork`), see
 [docs/HOOKS.md](http://github.com/resque/resque/blob/master/docs/HOOKS.md).
 
 
@@ -680,8 +680,8 @@ You can alter this behavior by setting the `RUN_AT_EXIT_HOOKS` environment varia
 Here's a parent / child pair doing some work:
 
     $ ps -e -o pid,command | grep [r]esque
-    92099 resque: Forked 92102 at 1253142769
-    92102 resque: Processing file_serve since 1253142769
+    92099 resque_sqs: Forked 92102 at 1253142769
+    92102 resque_sqs: Processing file_serve since 1253142769
 
 You can clearly see that process 92099 forked 92102, which has been
 working since 1253142769.
@@ -693,7 +693,7 @@ When a parent process is idle, it lets you know what queues it is
 waiting for work on:
 
     $ ps -e -o pid,command | grep [r]esque
-    92099 resque: Waiting for file_serve,warm_cache
+    92099 resque_sqs: Waiting for file_serve,warm_cache
 
 
 #### Signals
@@ -722,7 +722,7 @@ then `CONT` to start it again. It's also possible to [pause all workers](#pausin
 
 When shutting down processes, Heroku sends every process a TERM signal at the
 same time. By default this causes an immediate shutdown of any running job
-leading to frequent `Resque::TermException` errors.  For short running jobs, a simple
+leading to frequent `ResqueSqs::TermException` errors.  For short running jobs, a simple
 solution is to give a small amount of time for the job to finish
 before killing it.
 
@@ -736,16 +736,16 @@ To accomplish this set the following environment variables:
 * `RESQUE_PRE_SHUTDOWN_TIMEOUT` - The time between the parent receiving a shutdown signal (TERM by default) and it sending that signal on to the child process. Designed to give the child process
 time to complete before being forced to die.
 
-* `TERM_CHILD` - Must be set for `RESQUE_PRE_SHUTDOWN_TIMEOUT` to be used. After the timeout, if the child is still running it will raise a `Resque::TermException` and exit.
+* `TERM_CHILD` - Must be set for `RESQUE_PRE_SHUTDOWN_TIMEOUT` to be used. After the timeout, if the child is still running it will raise a `ResqueSqs::TermException` and exit.
 
-* `RESQUE_TERM_TIMEOUT` - By default you have a few seconds to handle `Resque::TermException` in your job. `RESQUE_TERM_TIMEOUT` and `RESQUE_PRE_SHUTDOWN_TIMEOUT` must be lower than the [heroku dyno timeout](https://devcenter.heroku.com/articles/limits#exit-timeout).
+* `RESQUE_TERM_TIMEOUT` - By default you have a few seconds to handle `ResqueSqs::TermException` in your job. `RESQUE_TERM_TIMEOUT` and `RESQUE_PRE_SHUTDOWN_TIMEOUT` must be lower than the [heroku dyno timeout](https://devcenter.heroku.com/articles/limits#exit-timeout).
 
 #### Pausing all workers
 
 Workers will not process pending jobs if the Redis key `pause-all-workers` is set with the string value "true".
 
 ``` ruby
-Resque.redis.set('pause-all-workers', 'true')
+ResqueSqs.redis.set('pause-all-workers', 'true')
 ```
 
 Nothing happens to jobs that are already being processed by workers.
@@ -753,7 +753,7 @@ Nothing happens to jobs that are already being processed by workers.
 Unpause by removing the Redis key `pause-all-workers`.
 
 ``` ruby
-Resque.redis.del('pause-all-workers')
+ResqueSqs.redis.del('pause-all-workers')
 ```
 
 #### Monitoring

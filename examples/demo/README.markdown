@@ -22,7 +22,7 @@ pending jobs rising.
 Now in another shell terminal start the worker:
 
     $ cd resque/examples/demo
-    $ QUEUE=default rake resque:work
+    $ QUEUE=default rake resque_sqs:work
 
 You should see the following output:
 
@@ -33,14 +33,14 @@ You should see the following output:
 
 You can also use `VVERBOSE` (very verbose) if you want to see more:
 
-    $ VVERBOSE=true QUEUE=default rake resque:work
+    $ VVERBOSE=true QUEUE=default rake resque_sqs:work
     *** Starting worker hostname:90399:default
     ** [05:55:09 2009-09-16] 90399: Registered signals
     ** [05:55:09 2009-09-16] 90399: Checking default
     ** [05:55:09 2009-09-16] 90399: Found job on default
     ** [05:55:09 2009-09-16] 90399: got: (Job{default} | Demo::Job | [{}])
-    ** [05:55:09 2009-09-16] 90399: resque: Forked 90401 at 1253141709
-    ** [05:55:09 2009-09-16] 90401: resque: Processing default since 1253141709
+    ** [05:55:09 2009-09-16] 90399: resque_sqs: Forked 90401 at 1253141709
+    ** [05:55:09 2009-09-16] 90401: resque_sqs: Processing default since 1253141709
     Processed a job!
     ** [05:55:10 2009-09-16] 90401: done: (Job{default} | Demo::Job | [{}])
 

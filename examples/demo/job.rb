@@ -1,4 +1,4 @@
-require 'resque'
+require 'resque_sqs'
 
 module Demo
   module Job

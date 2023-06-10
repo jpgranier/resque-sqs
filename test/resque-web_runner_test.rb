@@ -1,15 +1,15 @@
 require 'test_helper'
 require 'rack/test'
-require 'resque/server'
-require 'resque/web_runner'
+require 'resque_sqs/server'
+require 'resque_sqs/web_runner'
 
-describe 'Resque::WebRunner' do
+describe 'ResqueSqs::WebRunner' do
   def web_runner(*args)
-    Resque::WebRunner.any_instance.stubs(:daemonize!).once
+    ResqueSqs::WebRunner.any_instance.stubs(:daemonize!).once
 
-    Resque::JRUBY ? Rack::Handler::WEBrick.stubs(:run).once : Rack::Handler::Thin.stubs(:run).once
+    ResqueSqs::JRUBY ? Rack::Handler::WEBrick.stubs(:run).once : Rack::Handler::Thin.stubs(:run).once
 
-    @runner = Resque::WebRunner.new(*args)
+    @runner = ResqueSqs::WebRunner.new(*args)
   end
 
   before do
@@ -17,19 +17,19 @@ describe 'Resque::WebRunner' do
 
     FileUtils.rm_rf(File.join(File.dirname(__FILE__), 'tmp'))
     @log = StringIO.new
-    Resque::WebRunner.logger = Logger.new(@log)
+    ResqueSqs::WebRunner.logger = Logger.new(@log)
   end
 
   describe 'creating an instance' do
 
     describe 'basic usage' do
       before do
-        Resque::WebRunner.any_instance.expects(:system).once
+        ResqueSqs::WebRunner.any_instance.expects(:system).once
         web_runner("route","--debug", sessions: true)
       end
 
       it "sets app" do
-        assert_equal @runner.app, Resque::Server
+        assert_equal @runner.app, ResqueSqs::Server
       end
 
       it "sets app name" do
@@ -67,18 +67,18 @@ describe 'Resque::WebRunner' do
 
     describe 'with a sinatra app using an explicit server setting' do
       def web_runner(*args)
-        Resque::WebRunner.any_instance.stubs(:daemonize!).once
+        ResqueSqs::WebRunner.any_instance.stubs(:daemonize!).once
         Rack::Handler::WEBrick.stubs(:run).once
-        @runner = Resque::WebRunner.new(*args)
+        @runner = ResqueSqs::WebRunner.new(*args)
       end
 
       before do
-        Resque::Server.set :server, "webrick"
+        ResqueSqs::Server.set :server, "webrick"
         Rack::Handler::WEBrick.stubs(:run)
         web_runner("route","--debug", skip_launch: true, sessions: true)
       end
       after do
-        Resque::Server.set :server, false
+        ResqueSqs::Server.set :server, false
       end
 
       it 'sets the rack handler automatically' do
@@ -88,19 +88,19 @@ describe 'Resque::WebRunner' do
 
     describe 'with a sinatra app without an explicit server setting' do
       def web_runner(*args)
-        Resque::WebRunner.any_instance.stubs(:daemonize!).once
+        ResqueSqs::WebRunner.any_instance.stubs(:daemonize!).once
         Rack::Handler::WEBrick.stubs(:run).once
-        @runner = Resque::WebRunner.new(*args)
+        @runner = ResqueSqs::WebRunner.new(*args)
       end
 
       before do
-        Resque::Server.set :server, ["invalid", "webrick", "thin"]
+        ResqueSqs::Server.set :server, ["invalid", "webrick", "thin"]
         Rack::Handler::WEBrick.stubs(:run)
         web_runner("route", "--debug", skip_launch: true, sessions: true)
       end
 
       after do
-        Resque::Server.set :server, false
+        ResqueSqs::Server.set :server, false
       end
 
       it 'sets the first valid rack handler' do
@@ -110,16 +110,16 @@ describe 'Resque::WebRunner' do
 
     describe 'with a sinatra app without available server settings' do
       before do
-        Resque::Server.set :server, ["invalid"]
+        ResqueSqs::Server.set :server, ["invalid"]
       end
 
       after do
-        Resque::Server.set :server, false
+        ResqueSqs::Server.set :server, false
       end
 
       it 'raises an error indicating that no available Rack handler was found' do
         err = assert_raises StandardError do
-          Resque::WebRunner.new(skip_launch: true, sessions: true)
+          ResqueSqs::WebRunner.new(skip_launch: true, sessions: true)
         end
         assert_match('No available Rack handler (e.g. WEBrick, Thin, Puma, etc.) was found.', err.message)
       end
@@ -131,7 +131,7 @@ describe 'Resque::WebRunner' do
       end
 
       it "sets default rack handler to thin when in ruby and WEBrick when in jruby" do
-        if Resque::JRUBY
+        if ResqueSqs::JRUBY
           assert_equal @runner.rack_handler, Rack::Handler::WEBrick
         else
           assert_equal @runner.rack_handler, Rack::Handler::Thin
@@ -141,7 +141,7 @@ describe 'Resque::WebRunner' do
 
     describe 'with a launch path specified as a proc' do
       it 'evaluates the proc in the context of the runner' do
-        Resque::WebRunner.any_instance.expects(:system).once.with {|s| s =~ /\?search\=blah$/ }
+        ResqueSqs::WebRunner.any_instance.expects(:system).once.with {|s| s =~ /\?search\=blah$/ }
         web_runner("--debug", "blah", launch_path: Proc.new {|r| "?search=#{r.args.first}" })
         assert @runner.options[:launch_path].is_a?(Proc)
       end
@@ -149,7 +149,7 @@ describe 'Resque::WebRunner' do
 
     describe 'with a launch path specified as string' do
       it 'launches to the specific path' do
-        Resque::WebRunner.any_instance.expects(:system).once.with {|s| s =~ /\?search\=blah$/ }
+        ResqueSqs::WebRunner.any_instance.expects(:system).once.with {|s| s =~ /\?search\=blah$/ }
         web_runner("--debug", "blah", launch_path: "?search=blah")
         assert_equal @runner.options[:launch_path], "?search=blah"
       end
@@ -172,7 +172,7 @@ describe 'Resque::WebRunner' do
       it 'should raise an exception without --app-dir' do
         success = false
         begin
-          Resque::WebRunner.new(skip_launch: true)
+          ResqueSqs::WebRunner.new(skip_launch: true)
         rescue ArgumentError
           success = true
         end
