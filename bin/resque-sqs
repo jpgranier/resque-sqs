@@ -9,6 +9,7 @@ rescue LoadError
 end
 require 'resque_sqs'
 require 'optparse'
+require 'aws-sdk-sqs'
 
 parser = OptionParser.new do |opts|
   opts.banner = "Usage: resque [options] COMMAND"

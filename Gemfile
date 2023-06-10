@@ -15,3 +15,4 @@ gem "rack-test", "~> 2.0"
 gem "rake"
 gem "rubocop", "~> 0.80"
 gem "pry"
+gem 'aws-sdk-sqs', '~>1.57.0'
