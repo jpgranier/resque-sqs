@@ -10,6 +10,7 @@ describe "ResqueSqs::Failure::Redis" do
 
   before do
     ResqueSqs::Failure::Redis.clear
+    ResqueSqs.data_store.sqs.add_queue(:test)
     @redis_backend = ResqueSqs::Failure::Redis.new(exception, worker, queue, payload)
   end
 
