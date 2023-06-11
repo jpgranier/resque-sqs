@@ -24,6 +24,7 @@ require 'resque_sqs/thread_signal'
 require 'resque_sqs/vendor/utf8_util'
 
 require 'resque_sqs/railtie' if defined?(Rails::Railtie)
+require 'aws-sdk-sqs/client'
 
 module ResqueSqs
   include Helpers
@@ -112,6 +113,7 @@ module ResqueSqs
   #      or `Redis::Namespace`.
   #   6. An Hash of a redis connection {:host => 'localhost', :port => 6379, :db => 0}
   def redis=(server)
+    sqs = Aws::SQS::Client.new
     case server
     when String
       if server =~ /rediss?\:\/\//
@@ -123,15 +125,15 @@ module ResqueSqs
       end
       namespace ||= :resque
 
-      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(namespace, :redis => redis))
+      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(namespace, :redis => redis), sqs)
     when Redis::Namespace
-      @data_store = ResqueSqs::DataStore.new(server)
+      @data_store = ResqueSqs::DataStore.new(server, sqs)
     when ResqueSqs::DataStore
       @data_store = server
     when Hash
-      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(:resque, :redis => Redis.new(server)))
+      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(:resque, :redis => Redis.new(server)), sqs)
     else
-      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(:resque, :redis => server))
+      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(:resque, :redis => server), sqs)
     end
   end
 
@@ -354,7 +356,8 @@ module ResqueSqs
   #
   # Returns a Ruby object.
   def pop(queue)
-    decode(data_store.pop_from_queue(queue))
+    receipt_handle, body = data_store.pop_from_queue(queue)
+    [receipt_handle, decode(body)]
   end
 
   # Returns an integer representing the size of a queue.

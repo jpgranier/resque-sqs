@@ -98,21 +98,40 @@ module ResqueSqs
     end
 
     class QueueAccess
-      def initialize(redis)
-        @redis = redis
+      MAX_NUMBER_OF_MESSAGES = 1
+
+      def initialize(sqs)
+        @sqs = sqs
       end
-      def push_to_queue(queue,encoded_item)
-        @redis.pipelined do |piped|
-          watch_queue(queue, redis: piped)
-          piped.rpush redis_key_for_queue(queue), encoded_item
-        end
+
+      def push_to_queue(queue, encoded_item)
+        # TODO: Is there anything else that will validate the message was delivered to SQS?
+        send_message_result = @sqs.send_message({
+                                                  queue_url: queue,
+                                                  message_body: encoded_item
+                                                })
+        raise "failed to deliver to #{queue}" unless send_message_result.successful?
       end
 
       # Pop whatever is on queue
       def pop_from_queue(queue)
-        @redis.lpop(redis_key_for_queue(queue))
-      end
+        receive_message_result = @sqs.receive_message(
+          queue_url: queue,
+          max_number_of_messages: MAX_NUMBER_OF_MESSAGES
+        )
+        raise "failed to pop_from_queue #{queue}" unless receive_message_result.successful?
 
+        if receive_message_result.messages.length > MAX_NUMBER_OF_MESSAGES
+          raise 'The number of requested messages did not match the number returned messages'
+        end
+
+        message = receive_message_result.messages.first
+        return [nil, nil] if message.nil?
+
+        raise 'receipt_handle is blank' if message.receipt_handle.blank?
+
+        [message.receipt_handle, message.body]
+      end
       # Get the number of items in the queue
       def queue_size(queue)
         @redis.llen(redis_key_for_queue(queue)).to_i

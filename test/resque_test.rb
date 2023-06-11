@@ -201,20 +201,20 @@ describe "Resque" do
     end
 
     it "can pull items off a queue" do
-      assert_equal({ 'name' => 'chris' }, ResqueSqs.pop(:people))
-      assert_equal({ 'name' => 'bob' }, ResqueSqs.pop(:people))
-      assert_equal({ 'name' => 'mark' }, ResqueSqs.pop(:people))
-      assert_nil ResqueSqs.pop(:people)
+      assert_equal({ 'name' => 'chris' }, ResqueSqs.pop(:people).last)
+      assert_equal({ 'name' => 'bob' }, ResqueSqs.pop(:people).last)
+      assert_equal({ 'name' => 'mark' }, ResqueSqs.pop(:people).last)
+      assert_nil ResqueSqs.pop(:people).last
     end
 
     it "knows how big a queue is" do
       assert_equal 3, ResqueSqs.size(:people)
 
-      assert_equal({ 'name' => 'chris' }, ResqueSqs.pop(:people))
+      assert_equal({ 'name' => 'chris' }, ResqueSqs.pop(:people).last)
       assert_equal 2, ResqueSqs.size(:people)
 
-      assert_equal({ 'name' => 'bob' }, ResqueSqs.pop(:people))
-      assert_equal({ 'name' => 'mark' }, ResqueSqs.pop(:people))
+      assert_equal({ 'name' => 'bob' }, ResqueSqs.pop(:people).last)
+      assert_equal({ 'name' => 'mark' }, ResqueSqs.pop(:people).last)
       assert_equal 0, ResqueSqs.size(:people)
     end
 

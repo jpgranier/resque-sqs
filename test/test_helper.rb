@@ -4,6 +4,7 @@ require 'minitest/autorun'
 require 'redis/namespace'
 require 'mocha/minitest'
 require 'tempfile'
+require 'aws-sdk-sqs/client'
 
 $dir = File.dirname(File.expand_path(__FILE__))
 $LOAD_PATH.unshift $dir + '/../lib'
