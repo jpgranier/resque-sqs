@@ -18,10 +18,8 @@ module ResqueSqs
     def_delegators :@queue_access, :push_to_queue,
                                    :pop_from_queue,
                                    :queue_size,
-                                   :peek_in_queue,
                                    :queue_names,
-                                   :remove_queue,
-                                   :everything_in_queue,
+                                   :purge_queue,
                                    :remove_from_queue,
                                    :watch_queue,
                                    :list_range
@@ -129,41 +127,41 @@ module ResqueSqs
         message = receive_message_result.messages.first
         return [nil, nil] if message.nil?
 
-        raise 'receipt_handle is blank' if message.receipt_handle.blank?
+        raise 'receipt_handle is blank' if message.receipt_handle.to_s.empty?
 
         [message.receipt_handle, message.body]
       end
+
       # Get the number of items in the queue
       def queue_size(queue)
-        @redis.llen(redis_key_for_queue(queue)).to_i
-      end
+        get_queue_attributes_result = @sqs.get_queue_attributes(
+          queue_url: queue,
+          attribute_names: %w[ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible]
+        )
+        raise 'unable to get queue_size' unless get_queue_attributes_result.successful?
 
-      # Examine items in the queue.
-      #
-      # NOTE: if count is 1, you will get back an object, otherwise you will
-      #       get an Array.  I'm not making this up.
-      def peek_in_queue(queue, start = 0, count = 1)
-        list_range(redis_key_for_queue(queue), start, count)
+        get_queue_attributes_result.attributes['ApproximateNumberOfMessages'] + get_queue_attributes_result.attributes['ApproximateNumberOfMessagesNotVisible']
       end
 
       def queue_names
-        Array(@redis.smembers(:queues))
+        # TODO: Need to figure out why this isn't showing my queue
+        list_queues_result = @sqs.list_queues
+        raise 'unable to fetch queue_names' unless list_queues_result.successful?
+
+        # TODO: Need to iterate over batches
+        Array(list_queues_result.queue_urls)
       end
 
-      def remove_queue(queue)
-        @redis.pipelined do |piped|
-          piped.srem(:queues, [queue.to_s])
-          piped.del(redis_key_for_queue(queue))
-        end
+      def purge_queue(queue)
+        purge_queue_result = @sqs.purge_queue(queue_url: queue)
+        raise 'failed to purge_queue' unless purge_queue_result.successful?
       end
 
-      def everything_in_queue(queue)
-        @redis.lrange(redis_key_for_queue(queue), 0, -1)
-      end
-
-      # Remove data from the queue, if it's there, returning the number of removed elements
-      def remove_from_queue(queue,data)
-        @redis.lrem(redis_key_for_queue(queue), 0, data)
+      def remove_from_queue(queue, receipt_handle)
+        @sqs.delete_message(
+          queue_url: queue,
+          receipt_handle: receipt_handle,
+        )
       end
 
       # Private: do not call
@@ -179,13 +177,6 @@ module ResqueSqs
           Array(@redis.lrange(key, start, start+count-1))
         end
       end
-
-    private
-
-      def redis_key_for_queue(queue)
-        "queue:#{queue}"
-      end
-
     end
 
     class FailedQueueAccess
