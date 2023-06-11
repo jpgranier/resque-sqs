@@ -20,6 +20,24 @@ describe "ResqueSqs::Worker" do
   end
 
   before do
+    ResqueSqs.data_store.sqs.add_queue(:jobs)
+    ResqueSqs.data_store.sqs.add_queue(:at_exit_jobs)
+    ResqueSqs.data_store.sqs.add_queue(:high)
+    ResqueSqs.data_store.sqs.add_queue(:critical)
+    ResqueSqs.data_store.sqs.add_queue(:blahblah)
+    ResqueSqs.data_store.sqs.add_queue(:beer)
+    ResqueSqs.data_store.sqs.add_queue(:queue)
+    ResqueSqs.data_store.sqs.add_queue(:other_queue)
+    ResqueSqs.data_store.sqs.add_queue(:critial)
+    ResqueSqs.data_store.sqs.add_queue(:high)
+    ResqueSqs.data_store.sqs.add_queue(:low)
+    ResqueSqs.data_store.sqs.add_queue(:perform_less)
+    ResqueSqs.data_store.sqs.add_queue(:good_job)
+    ResqueSqs.data_store.sqs.add_queue(:some_job)
+    ResqueSqs.data_store.sqs.add_queue('foo:bar')
+    ResqueSqs.data_store.sqs.add_queue(:long_running_job)
+    ResqueSqs.data_store.sqs.add_queue(:other_jobs)
+    ResqueSqs.data_store.sqs.add_queue(:not_failing_job)
     @worker = ResqueSqs::Worker.new(:jobs)
     ResqueSqs::Job.create(:jobs, SomeJob, 20, '/tmp')
   end
@@ -55,7 +73,7 @@ describe "ResqueSqs::Worker" do
   end
 
   it "does not allow exceptions from failure backend to escape" do
-    job = ResqueSqs::Job.new(:jobs, {})
+    job = ResqueSqs::Job.new(:jobs, {}, nil)
     with_failure_backend BadFailureBackend do
       @worker.perform job
     end
@@ -152,20 +170,20 @@ describe "ResqueSqs::Worker" do
   end
 
   it "does report failure for jobs with invalid payload" do
-    job = ResqueSqs::Job.new(:jobs, { 'class' => 'NotAValidJobClass', 'args' => '' })
+    job = ResqueSqs::Job.new(:jobs, { 'class' => 'NotAValidJobClass', 'args' => '' }, nil)
     @worker.perform job
     assert_equal 1, ResqueSqs::Failure.count, 'failure not reported'
   end
 
   it "register 'run_at' time on UTC timezone in ISO8601 format" do
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"}, nil)
     now = Time.now.utc.iso8601
     @worker.working_on(job)
     assert_equal now, @worker.processing['run_at']
   end
 
   it "fails uncompleted jobs with DirtyExit by default on exit" do
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"}, nil)
     @worker.working_on(job)
     @worker.unregister_worker
     assert_equal 1, ResqueSqs::Failure.count
@@ -174,7 +192,7 @@ describe "ResqueSqs::Worker" do
   end
 
   it "fails uncompleted jobs with worker exception on exit" do
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"}, nil)
     @worker.working_on(job)
     @worker.unregister_worker(StandardError.new)
     assert_equal 1, ResqueSqs::Failure.count
@@ -182,7 +200,7 @@ describe "ResqueSqs::Worker" do
   end
 
   it "does not mask exception when timeout getting job metadata" do
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"}, nil)
     @worker.working_on(job)
     ResqueSqs.data_store.redis.stubs(:get).raises(Redis::CannotConnectError)
 
@@ -212,7 +230,7 @@ describe "ResqueSqs::Worker" do
   end
 
   it "fails uncompleted jobs on exit, and calls failure hook" do
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'SimpleJobWithFailureHandling', 'args' => ""})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'SimpleJobWithFailureHandling', 'args' => ""}, nil)
     @worker.working_on(job)
     @worker.unregister_worker
     assert_equal 1, ResqueSqs::Failure.count
@@ -223,7 +241,7 @@ describe "ResqueSqs::Worker" do
     ResqueSqs.logger = DummyLogger.new
 
     begin
-      job = ResqueSqs::Job.new(:jobs, {'class' => 'BadJobWithOnFailureHookFail', 'args' => []})
+      job = ResqueSqs::Job.new(:jobs, {'class' => 'BadJobWithOnFailureHookFail', 'args' => []}, nil)
       @worker.working_on(job)
       @worker.unregister_worker
       messages = ResqueSqs.logger.messages
@@ -255,7 +273,7 @@ describe "ResqueSqs::Worker" do
   end
 
   it "only calls failure hook once on exception" do
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'SimpleFailingJob', 'args' => ""})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'SimpleFailingJob', 'args' => ""}, nil)
     @worker.perform(job)
     assert_equal 1, ResqueSqs::Failure.count
     assert_equal 1, SimpleFailingJob.exception_count
@@ -336,7 +354,7 @@ describe "ResqueSqs::Worker" do
     assert_equal true, @worker.work_one_job
     assert_equal 1, ResqueSqs.size(:jobs)
 
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob'})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob'}, nil)
     assert_equal 1, ResqueSqs.size(:jobs)
     assert_equal true, @worker.work_one_job(job)
     assert_equal 1, ResqueSqs.size(:jobs)
@@ -350,128 +368,6 @@ describe "ResqueSqs::Worker" do
     assert_equal 0, ResqueSqs.size(:jobs)
 
     assert_equal false, @worker.work_one_job
-  end
-
-  it "the queues method avoids unnecessary calls to retrieve queue names" do
-    worker = ResqueSqs::Worker.new(:critical, :high, "num*")
-    actual_queues = ["critical", "high", "num1", "num2"]
-    ResqueSqs.data_store.expects(:queue_names).once.returns(actual_queues)
-    assert_equal actual_queues, worker.queues
-  end
-
-  it "can work on all queues" do
-    ResqueSqs::Job.create(:high, GoodJob)
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:blahblah, GoodJob)
-
-    @worker = ResqueSqs::Worker.new("*")
-    @worker.work(0)
-
-    assert_equal 0, ResqueSqs.size(:high)
-    assert_equal 0, ResqueSqs.size(:critical)
-    assert_equal 0, ResqueSqs.size(:blahblah)
-  end
-
-  it "can work with wildcard at the end of the list" do
-    ResqueSqs::Job.create(:high, GoodJob)
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:blahblah, GoodJob)
-    ResqueSqs::Job.create(:beer, GoodJob)
-
-    @worker = ResqueSqs::Worker.new(:critical, :high, "*")
-    @worker.work(0)
-
-    assert_equal 0, ResqueSqs.size(:high)
-    assert_equal 0, ResqueSqs.size(:critical)
-    assert_equal 0, ResqueSqs.size(:blahblah)
-    assert_equal 0, ResqueSqs.size(:beer)
-  end
-
-  it "can work with wildcard at the middle of the list" do
-    ResqueSqs::Job.create(:high, GoodJob)
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:blahblah, GoodJob)
-    ResqueSqs::Job.create(:beer, GoodJob)
-
-    @worker = ResqueSqs::Worker.new(:critical, "*", :high)
-    @worker.work(0)
-
-    assert_equal 0, ResqueSqs.size(:high)
-    assert_equal 0, ResqueSqs.size(:critical)
-    assert_equal 0, ResqueSqs.size(:blahblah)
-    assert_equal 0, ResqueSqs.size(:beer)
-  end
-
-  it "processes * queues in alphabetical order" do
-    ResqueSqs::Job.create(:high, GoodJob)
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:blahblah, GoodJob)
-
-    processed_queues = []
-    @worker = ResqueSqs::Worker.new("*")
-    without_forking do
-      @worker.work(0) do |job|
-        processed_queues << job.queue
-      end
-    end
-
-    assert_equal %w( jobs high critical blahblah ).sort, processed_queues
-  end
-
-  it "works with globs" do
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:test_one, GoodJob)
-    ResqueSqs::Job.create(:test_two, GoodJob)
-
-    @worker = ResqueSqs::Worker.new("test_*")
-    @worker.work(0)
-
-    assert_equal 1, ResqueSqs.size(:critical)
-    assert_equal 0, ResqueSqs.size(:test_one)
-    assert_equal 0, ResqueSqs.size(:test_two)
-  end
-
-  it "excludes a negated queue" do
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:high, GoodJob)
-    ResqueSqs::Job.create(:low, GoodJob)
-
-    @worker = ResqueSqs::Worker.new(:critical, "!low", "*")
-    @worker.work(0)
-
-    assert_equal 0, ResqueSqs.size(:critical)
-    assert_equal 0, ResqueSqs.size(:high)
-    assert_equal 1, ResqueSqs.size(:low)
-  end
-
-  it "excludes multiple negated queues" do
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:high, GoodJob)
-    ResqueSqs::Job.create(:foo, GoodJob)
-    ResqueSqs::Job.create(:bar, GoodJob)
-
-    @worker = ResqueSqs::Worker.new("*", "!foo", "!bar")
-    @worker.work(0)
-
-    assert_equal 0, ResqueSqs.size(:critical)
-    assert_equal 0, ResqueSqs.size(:high)
-    assert_equal 1, ResqueSqs.size(:foo)
-    assert_equal 1, ResqueSqs.size(:bar)
-  end
-
-  it "works with negated globs" do
-    ResqueSqs::Job.create(:critical, GoodJob)
-    ResqueSqs::Job.create(:high, GoodJob)
-    ResqueSqs::Job.create(:test_one, GoodJob)
-    ResqueSqs::Job.create(:test_two, GoodJob)
-
-    @worker = ResqueSqs::Worker.new("*", "!test_*")
-    @worker.work(0)
-
-    assert_equal 0, ResqueSqs.size(:critical)
-    assert_equal 0, ResqueSqs.size(:high)
-    assert_equal 1, ResqueSqs.size(:test_one)
-    assert_equal 1, ResqueSqs.size(:test_two)
   end
 
   it "has a unique id" do
@@ -867,7 +763,7 @@ describe "ResqueSqs::Worker" do
     workerA.to_s = "jobs01.company.com:3:jobs"
     workerA.register_worker
 
-    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"})
+    job = ResqueSqs::Job.new(:jobs, {'class' => 'GoodJob', 'args' => "blah"}, nil)
     workerA.working_on(job)
     workerA.heartbeat!(Time.now - ResqueSqs.prune_interval - 1)
 
@@ -1047,7 +943,8 @@ describe "ResqueSqs::Worker" do
     end
 
     it "will not call the queue empty hook on start-up when it has no jobs to process" do
-      ResqueSqs.remove_queue(:jobs)
+      ResqueSqs.data_store.sqs.remove_queue(:jobs)
+      ResqueSqs.data_store.sqs.add_queue(:jobs)
       $QUEUE_EMPTY_CALLED = false
       ResqueSqs.queue_empty = Proc.new { $QUEUE_EMPTY_CALLED = true }
       workerA = ResqueSqs::Worker.new(:jobs)
@@ -1341,15 +1238,6 @@ describe "ResqueSqs::Worker" do
     def run_in_job(&block)
       ForkResultJob.perform_with_result(@worker, &block)
     end
-
-    # it "reconnects to redis after fork" do
-    #   original_connection = redis_socket(ResqueSqs.redis).object_id
-    #   new_connection = run_in_job do
-    #     redis_socket(ResqueSqs.redis).object_id
-    #   end
-    #   assert ResqueSqs.redis._client.connected?
-    #   refute_equal original_connection, new_connection
-    # end
 
     it "tries to reconnect three times before giving up and the failure does not unregister the parent" do
       @worker.data_store.stubs(:reconnect).raises(Redis::BaseConnectionError)
