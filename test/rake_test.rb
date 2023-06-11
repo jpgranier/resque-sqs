@@ -22,6 +22,8 @@ describe "rake tasks" do
     end
 
     it "works when multiple queues specified" do
+      ResqueSqs.data_store.sqs.add_queue('high')
+      ResqueSqs.data_store.sqs.add_queue('low')
       ENV["QUEUES"] = "high,low"
       ResqueSqs::Worker.any_instance.expects(:work)
       run_rake_task("resque_sqs:work")
@@ -33,6 +35,7 @@ describe "rake tasks" do
       before do
         ResqueSqs.logger = Logger.new(messages)
         ResqueSqs.logger.level = Logger::ERROR
+        ResqueSqs.data_store.sqs.add_queue(:jobs)
         ResqueSqs.enqueue_to(:jobs, SomeJob, 20, '/tmp')
         ResqueSqs::Worker.any_instance.stubs(:shutdown?).returns(false, true) # Process one job and then quit
       end
