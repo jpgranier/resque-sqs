@@ -175,5 +175,9 @@ class MockSQSClient
     def length
       @queue.length
     end
+
+    def clear
+      @queue = []
+    end
   end
 end

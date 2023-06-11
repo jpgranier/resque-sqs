@@ -51,7 +51,7 @@ class GlobalSpecHooks < MiniTest::Spec
   def setup
     super
     reset_logger
-    ResqueSqs.data_store.redis.flushall
+    ResqueSqs.data_store.redis.redis.flushall
     ResqueSqs.before_first_fork = nil
     ResqueSqs.before_fork = nil
     ResqueSqs.after_fork = nil
@@ -77,6 +77,7 @@ else
   puts "Starting redis for testing at localhost:9736..."
   `redis-server #{$dir}/redis-test.conf`
   ResqueSqs.data_store = ResqueSqs::DataStore.new('localhost:9736', MockSQSClient.new)
+  puts "#{ResqueSqs.redis}"
 end
 
 ##

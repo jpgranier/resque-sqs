@@ -88,6 +88,7 @@ describe "Resque web" do
       end
 
       it "should display 'failed' queue when there is 1 failed queue" do
+        ResqueSqs.data_store.sqs.purge_all_queues
         ResqueSqs::Failure.stubs(:queues).returns([:queue1])
         get "/queues"
 

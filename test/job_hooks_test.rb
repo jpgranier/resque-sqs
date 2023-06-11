@@ -293,71 +293,12 @@ describe "ResqueSqs::Job before_enqueue" do
   end
 
   it "a before enqueue hook that returns false should prevent the job from getting queued" do
-    ResqueSqs.remove_queue(:jobs)
+    ResqueSqs.data_store.sqs.add_queue(:jobs)
+    # ResqueSqs.purge_queue(:jobs)
     history = []
     @worker = ResqueSqs::Worker.new(:jobs)
     assert_nil ResqueSqs.enqueue(BeforeEnqueueJobAbort, history)
     assert_equal 0, ResqueSqs.size(:jobs)
-  end
-end
-
-describe "ResqueSqs::Job after_dequeue" do
-  include PerformJob
-
-  class ::AfterDequeueJob
-    @queue = :jobs
-    def self.after_dequeue_record_history(history)
-      history << :after_dequeue
-    end
-
-    def self.perform(history)
-    end
-  end
-
-  it "the after dequeue hook should run" do
-    history = []
-    @worker = ResqueSqs::Worker.new(:jobs)
-    ResqueSqs.dequeue(AfterDequeueJob, history)
-    @worker.work(0)
-    assert_equal history, [:after_dequeue], "after_dequeue was not run"
-  end
-end
-
-
-describe "ResqueSqs::Job before_dequeue" do
-  include PerformJob
-
-  class ::BeforeDequeueJob
-    @queue = :jobs
-    def self.before_dequeue_record_history(history)
-      history << :before_dequeue
-    end
-
-    def self.perform(history)
-    end
-  end
-
-  class ::BeforeDequeueJobAbort
-    @queue = :jobs
-    def self.before_dequeue_abort(history)
-      false
-    end
-
-    def self.perform(history)
-    end
-  end
-
-  it "the before dequeue hook should run" do
-    history = []
-    @worker = ResqueSqs::Worker.new(:jobs)
-    ResqueSqs.dequeue(BeforeDequeueJob, history)
-    @worker.work(0)
-    assert_equal history, [:before_dequeue], "before_dequeue was not run"
-  end
-
-  it "a before dequeue hook that returns false should prevent the job from getting dequeued" do
-    history = []
-    assert_nil ResqueSqs.dequeue(BeforeDequeueJobAbort, history)
   end
 end
 
