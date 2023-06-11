@@ -84,7 +84,7 @@ end
 #
 module PerformJob
   def perform_job(klass, *args)
-    resque_job = ResqueSqs::Job.new(:testqueue, 'class' => klass, 'args' => args)
+    resque_job = ResqueSqs::Job.new(:testqueue, {'class' => klass, 'args' => args}, nil)
     resque_job.perform
   end
 end
