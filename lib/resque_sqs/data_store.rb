@@ -6,9 +6,10 @@ module ResqueSqs
 
     HEARTBEAT_KEY = "workers:heartbeat"
 
-    def initialize(redis)
+    def initialize(redis, sqs)
       @redis                = redis
-      @queue_access         = QueueAccess.new(@redis)
+      @sqs                  = sqs
+      @queue_access         = QueueAccess.new(@sqs)
       @failed_queue_access  = FailedQueueAccess.new(@redis)
       @workers              = Workers.new(@redis)
       @stats_access         = StatsAccess.new(@redis)
