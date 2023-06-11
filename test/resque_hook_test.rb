@@ -10,6 +10,7 @@ describe "Resque Hooks" do
 
   before do
     $called = false
+    ResqueSqs.data_store.sqs.add_queue(:jobs)
     @worker = ResqueSqs::Worker.new(:jobs)
   end
 
