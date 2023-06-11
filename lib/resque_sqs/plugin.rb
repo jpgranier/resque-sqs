@@ -64,15 +64,5 @@ module ResqueSqs
     def before_enqueue_hooks(job)
       get_hook_names(job, 'before_enqueue')
     end
-
-    # Given an object, returns a list `after_dequeue` hook names.
-    def after_dequeue_hooks(job)
-      get_hook_names(job, 'after_dequeue')
-    end
-
-    # Given an object, returns a list `before_dequeue` hook names.
-    def before_dequeue_hooks(job)
-      get_hook_names(job, 'before_dequeue')
-    end
   end
 end

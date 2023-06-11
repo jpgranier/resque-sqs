@@ -431,50 +431,6 @@ module ResqueSqs
     return true
   end
 
-  # This method can be used to conveniently remove a job from a queue.
-  # It assumes the class you're passing it is a real Ruby class (not
-  # a string or reference) which either:
-  #
-  #   a) has a @queue ivar set
-  #   b) responds to `queue`
-  #
-  # If either of those conditions are met, it will use the value obtained
-  # from performing one of the above operations to determine the queue.
-  #
-  # If no queue can be inferred this method will raise a `ResqueSqs::NoQueueError`
-  #
-  # If no args are given, this method will dequeue *all* jobs matching
-  # the provided class. See `ResqueSqs::Job.destroy` for more
-  # information.
-  #
-  # Returns the number of jobs destroyed.
-  #
-  # Example:
-  #
-  #   # Removes all jobs of class `UpdateNetworkGraph`
-  #   ResqueSqs.dequeue(GitHub::Jobs::UpdateNetworkGraph)
-  #
-  #   # Removes all jobs of class `UpdateNetworkGraph` with matching args.
-  #   ResqueSqs.dequeue(GitHub::Jobs::UpdateNetworkGraph, 'repo:135325')
-  #
-  # This method is considered part of the `stable` API.
-  def dequeue(klass, *args)
-    # TODO: Fix documentation
-    # Perform before_dequeue hooks. Don't perform dequeue if any hook returns false
-    before_hooks = Plugin.before_dequeue_hooks(klass).collect do |hook|
-      klass.send(hook, *args)
-    end
-    return if before_hooks.any? { |result| result == false }
-
-    destroyed = Job.destroy(queue_from_class(klass), klass, *args)
-
-    Plugin.after_dequeue_hooks(klass).each do |hook|
-      klass.send(hook, *args)
-    end
-
-    destroyed
-  end
-
   # Given a class, try to extrapolate an appropriate queue based on a
   # class instance variable or `queue` method.
   def queue_from_class(klass)
@@ -507,7 +463,6 @@ module ResqueSqs
       raise NoClassError.new("Jobs must be given a class.")
     end
   end
-
 
   #
   # worker shortcuts
@@ -557,11 +512,9 @@ module ResqueSqs
   # Returns a hash, mapping queue names to queue sizes
   def queue_sizes
     queue_names = queues
-
-    sizes = redis.pipelined do |piped|
-      queue_names.each do |name|
-        piped.llen("queue:#{name}")
-      end
+    sizes = []
+    queue_names.each do |queue_name|
+      sizes << ResqueSqs.size(queue_name)
     end
 
     Hash[queue_names.zip(sizes)]
