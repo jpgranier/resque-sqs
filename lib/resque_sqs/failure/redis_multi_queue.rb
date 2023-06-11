@@ -43,7 +43,7 @@ module ResqueSqs
       end
 
       def self.all(offset = 0, limit = 1, queue = :failed)
-        ResqueSqs.list_range(queue, offset, limit)
+        ResqueSqs.list_failed_queue_range(queue, offset, limit)
       end
 
       def self.queues

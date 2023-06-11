@@ -21,8 +21,7 @@ module ResqueSqs
                                    :queue_names,
                                    :purge_queue,
                                    :remove_from_queue,
-                                   :watch_queue,
-                                   :list_range
+                                   :watch_queue
 
     def_delegators :@failed_queue_access, :add_failed_queue,
                                           :remove_failed_queue,
@@ -31,7 +30,9 @@ module ResqueSqs
                                           :push_to_failed_queue,
                                           :clear_failed_queue,
                                           :update_item_in_failed_queue,
-                                          :remove_from_failed_queue
+                                          :remove_from_failed_queue,
+                                          :list_failed_queue_range
+
     def_delegators :@workers, :worker_ids,
                               :workers_map,
                               :get_worker_payload,
@@ -168,15 +169,6 @@ module ResqueSqs
       def watch_queue(queue, redis: @redis)
         redis.sadd(:queues, [queue.to_s])
       end
-
-      # Private: do not call
-      def list_range(key, start = 0, count = 1)
-        if count == 1
-          @redis.lindex(key, start)
-        else
-          Array(@redis.lrange(key, start, start+count-1))
-        end
-      end
     end
 
     class FailedQueueAccess
@@ -221,6 +213,15 @@ module ResqueSqs
         hopefully_unique_value_we_can_use_to_delete_job = ""
         @redis.lset(failed_queue_name, index_in_failed_queue, hopefully_unique_value_we_can_use_to_delete_job)
         @redis.lrem(failed_queue_name, 1,                     hopefully_unique_value_we_can_use_to_delete_job)
+      end
+
+      # Private: do not call
+      def list_failed_queue_range(key, start = 0, count = 1)
+        if count == 1
+          @redis.lindex(key, start)
+        else
+          Array(@redis.lrange(key, start, start+count-1))
+        end
       end
     end
 

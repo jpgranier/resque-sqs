@@ -368,8 +368,8 @@ module ResqueSqs
 
   # Does the dirty work of fetching a range of items from a Redis list
   # and converting them into Ruby objects.
-  def list_range(key, start = 0, count = 1)
-    results = @data_store.list_range(key, start, count)
+  def list_failed_queue_range(key, start = 0, count = 1)
+    results = @data_store.list_failed_queue_range(key, start, count)
     if count == 1
       decode(results)
     else

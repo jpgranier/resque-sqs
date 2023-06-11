@@ -44,7 +44,7 @@ module ResqueSqs
 
       def self.all(offset = 0, limit = 1, queue = nil)
         check_queue(queue)
-        ResqueSqs.list_range(:failed, offset, limit)
+        data_store.list_failed_queue_range(:failed, offset, limit)
       end
 
       def self.each(offset = 0, limit = self.count, queue = :failed, class_name = nil, order = 'desc')
