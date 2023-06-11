@@ -1,6 +1,7 @@
 require 'test_helper'
 require 'rack/test'
 require 'resque_sqs/server'
+require 'resque_sqs/failure/redis_multi_queue'
 
 describe "Resque web" do
   include Rack::Test::Methods
