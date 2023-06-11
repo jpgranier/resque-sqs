@@ -387,6 +387,10 @@ module ResqueSqs
     @data_store.purge_queue(queue)
   end
 
+  def remove_from_queue(queue, receipt_handle)
+    @data_store.remove_from_queue(queue, receipt_handle)
+  end
+
   # Used internally to keep track of which queues we've created.
   # Don't call this directly.
   def watch_queue(queue)

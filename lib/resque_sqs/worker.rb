@@ -684,7 +684,7 @@ module ResqueSqs
       # If we're still processing a job, make sure it gets logged as a
       # failure.
       if (hash = processing) && !hash.empty?
-        job = Job.new(hash['queue'], hash['payload'])
+        job = Job.new(hash['queue'], hash['payload'], nil)
         # Ensure the proper worker is attached to this job, even if
         # it's not the precise instance that died.
         job.worker = self

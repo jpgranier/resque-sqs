@@ -73,9 +73,13 @@ module ResqueSqs
     # This job's associated payload object.
     attr_reader :payload
 
-    def initialize(queue, payload)
+    # This job's associated identifier for deletion
+    attr_reader :receipt_handle
+
+    def initialize(queue, payload, receipt_handle)
       @queue = queue
       @payload = payload
+      @receipt_handle = receipt_handle
       @failure_hooks_ran = false
     end
 
@@ -90,7 +94,7 @@ module ResqueSqs
       if ResqueSqs.inline?
         # Instantiating a ResqueSqs::Job and calling perform on it so callbacks run
         # decode(encode(args)) to ensure that args are normalized in the same manner as a non-inline job
-        new(:inline, {'class' => klass, 'args' => decode(encode(args))}).perform
+        new(:inline, {'class' => klass, 'args' => decode(encode(args))}, nil).perform
       else
         ResqueSqs.push(queue, :class => klass.to_s, :args => args)
       end
@@ -99,8 +103,10 @@ module ResqueSqs
     # Given a string queue name, returns an instance of ResqueSqs::Job
     # if any jobs are available. If not, returns nil.
     def self.reserve(queue)
-      return unless payload = ResqueSqs.pop(queue)
-      new(queue, payload)
+      receipt_handle, payload = ResqueSqs.pop(queue)
+      return unless payload
+
+      new(queue, payload, receipt_handle)
     end
 
     # Attempts to perform the work represented by this job instance.

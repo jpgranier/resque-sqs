@@ -111,6 +111,8 @@ module ResqueSqs
                                                   message_body: encoded_item
                                                 })
         raise "failed to deliver to #{queue}" unless send_message_result.successful?
+
+        true
       end
 
       # Pop whatever is on queue
@@ -161,7 +163,7 @@ module ResqueSqs
       def remove_from_queue(queue, receipt_handle)
         @sqs.delete_message(
           queue_url: queue,
-          receipt_handle: receipt_handle,
+          receipt_handle: receipt_handle
         )
       end
 
