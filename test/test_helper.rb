@@ -4,7 +4,9 @@ require 'minitest/autorun'
 require 'redis/namespace'
 require 'mocha/minitest'
 require 'tempfile'
-require 'aws-sdk-sqs/client'
+require 'aws-sdk-core'
+require 'aws-sdk-sqs'
+require 'mock_sqs_client'
 
 $dir = File.dirname(File.expand_path(__FILE__))
 $LOAD_PATH.unshift $dir + '/../lib'
@@ -17,6 +19,7 @@ begin
 rescue LoadError
 end
 
+QUEUE = 'https://sqs.us-east-2.amazonaws.com/693585835370/ResqueSQS'
 
 #
 # make sure we can run redis
@@ -48,7 +51,7 @@ class GlobalSpecHooks < MiniTest::Spec
   def setup
     super
     reset_logger
-    ResqueSqs.redis.redis.flushall
+    ResqueSqs.data_store.redis.flushall
     ResqueSqs.before_first_fork = nil
     ResqueSqs.before_fork = nil
     ResqueSqs.after_fork = nil
@@ -69,11 +72,11 @@ if ENV.key? 'RESQUE_DISTRIBUTED'
   `redis-server #{$dir}/redis-test.conf`
   `redis-server #{$dir}/redis-test-cluster.conf`
   r = Redis::Distributed.new(['redis://localhost:9736', 'redis://localhost:9737'])
-  ResqueSqs.redis = Redis::Namespace.new :resque, :redis => r
+  ResqueSqs.data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(:resque, :redis => r), MockSQSClient.new)
 else
   puts "Starting redis for testing at localhost:9736..."
   `redis-server #{$dir}/redis-test.conf`
-  ResqueSqs.redis = 'localhost:9736'
+  ResqueSqs.data_store = ResqueSqs::DataStore.new('localhost:9736', MockSQSClient.new)
 end
 
 ##
