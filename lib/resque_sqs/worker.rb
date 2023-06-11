@@ -21,17 +21,12 @@ module ResqueSqs
       @@all_heartbeat_threads = []
     end
 
-    def redis
-      ResqueSqs.redis
-    end
-    alias :data_store :redis
-
-    def self.redis
-      ResqueSqs.redis
-    end
-
     def self.data_store
-      self.redis
+      ResqueSqs.data_store
+    end
+
+    def data_store
+      ResqueSqs.data_store
     end
 
     # Given a Ruby object, returns a string suitable for storage in a
@@ -177,20 +172,9 @@ module ResqueSqs
       self.reconnect if ENV['BACKGROUND']
     end
 
-    WILDCARDS = ['*', '?', '{', '}', '[', ']'].freeze
-
     def queues=(queues)
       queues = (ENV["QUEUES"] || ENV['QUEUE']).to_s.split(',') if queues.empty?
-      queues = queues.map { |queue| queue.to_s.strip }
-
-      @skip_queues, @queues = queues.partition { |queue| queue.start_with?('!') }
-      @skip_queues.map! { |queue| queue[1..-1] }
-
-      # The behavior of `queues` is dependent on the value of `@has_dynamic_queues: if it's true, the method returns the result of filtering @queues with `glob_match`
-      # if it's false, the method returns @queues directly. Since `glob_match` will cause skipped queues to be filtered out, we want to make sure it's called if we have @skip_queues.any?
-      @has_dynamic_queues =
-        @skip_queues.any? || WILDCARDS.any? { |char| @queues.join.include?(char) }
-
+      @queues = queues.map { |queue| queue.to_s.strip }
       validate_queues
     end
 
@@ -202,25 +186,14 @@ module ResqueSqs
       if @queues.nil? || @queues.empty?
         raise NoQueueError.new("Please give each worker at least one queue.")
       end
-    end
 
-    # Returns a list of queues to use when searching for a job.
-    # A splat ("*") means you want every queue (in alpha order) - this
-    # can be useful for dynamically adding new queues.
-    def queues
-      if @has_dynamic_queues
-        current_queues = ResqueSqs.queues
-        @queues.map { |queue| glob_match(current_queues, queue) }.flatten.uniq
-      else
-        @queues
+      @queues.each do |queue|
+        raise NoQueueError.new("#{queue} does not exists") unless data_store.queue_exists?(queue)
       end
     end
 
-    def glob_match(list, pattern)
-      list.select do |queue|
-        File.fnmatch?(pattern, queue) &&
-          @skip_queues.none? { |skip_pattern| File.fnmatch?(skip_pattern, queue) }
-      end.sort
+    def queues
+      @queues
     end
 
     # This is the main workhorse method. Called on a Worker instance,
@@ -579,7 +552,7 @@ module ResqueSqs
 
     # are we paused?
     def paused?
-      @paused || redis.get('pause-all-workers').to_s.strip.downcase == 'true'
+      @paused || data_store.get('pause-all-workers').to_s.strip.downcase == 'true'
     end
 
     # Stop processing jobs after the current one has completed (if we're

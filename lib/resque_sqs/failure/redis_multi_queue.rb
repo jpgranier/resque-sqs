@@ -23,7 +23,7 @@ module ResqueSqs
           :queue     => queue
         }
         data = ResqueSqs.encode(data)
-        data_store.push_to_failed_queue(data,ResqueSqs::Failure.failure_queue_name(queue))
+        data_store.push_to_failed_queue(data, ResqueSqs::Failure.failure_queue_name(queue))
       end
 
       def self.count(queue = nil, class_name = nil)

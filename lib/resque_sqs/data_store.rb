@@ -6,13 +6,12 @@ module ResqueSqs
 
     HEARTBEAT_KEY = "workers:heartbeat"
 
-    def initialize(redis, sqs)
-      @redis                = redis
-      @sqs                  = sqs
-      @queue_access         = QueueAccess.new(@sqs)
-      @failed_queue_access  = FailedQueueAccess.new(@redis)
-      @workers              = Workers.new(@redis)
-      @stats_access         = StatsAccess.new(@redis)
+    attr_reader :redis
+    attr_reader :sqs
+
+    def initialize(redis_connection, sqs_client)
+      self.redis = redis_connection
+      self.sqs = sqs_client
     end
 
     def_delegators :@queue_access, :push_to_queue,
@@ -21,7 +20,8 @@ module ResqueSqs
                                    :queue_names,
                                    :purge_queue,
                                    :remove_from_queue,
-                                   :watch_queue
+                                   :watch_queue,
+                                   :queue_exists?
 
     def_delegators :@failed_queue_access, :add_failed_queue,
                                           :remove_failed_queue,
@@ -97,11 +97,44 @@ module ResqueSqs
       Time.at(time)
     end
 
+    private
+
+    def redis=(redis_connection)
+      case redis_connection
+      when String
+        if redis_connection =~ /rediss?\:\/\//
+          redis = Redis.new(:url => client)
+        else
+          redis_connection, namespace = redis_connection.split('/', 2)
+          host, port, db = redis_connection.split(':')
+          redis = Redis.new(:host => host, :port => port, :db => db)
+        end
+        namespace ||= :resque
+        @redis = Redis::Namespace.new(namespace, :redis => redis)
+      when Redis::Namespace
+        @redis = redis_connection
+      when Hash
+        @redis = Redis::Namespace.new(:resque, :redis => Redis.new(redis_connection))
+      else
+        @redis = Redis::Namespace.new(:resque, :redis => redis_connection)
+      end
+
+      @failed_queue_access = FailedQueueAccess.new(@redis)
+      @workers = Workers.new(@redis)
+      @stats_access = StatsAccess.new(@redis)
+    end
+
+    def sqs=(sqs)
+      @sqs = sqs
+      @queue_access = QueueAccess.new(@sqs)
+    end
+
     class QueueAccess
       MAX_NUMBER_OF_MESSAGES = 1
 
       def initialize(sqs)
         @sqs = sqs
+        @queues = fetch_queues
       end
 
       def push_to_queue(queue, encoded_item)
@@ -143,16 +176,11 @@ module ResqueSqs
         )
         raise 'unable to get queue_size' unless get_queue_attributes_result.successful?
 
-        get_queue_attributes_result.attributes['ApproximateNumberOfMessages'] + get_queue_attributes_result.attributes['ApproximateNumberOfMessagesNotVisible']
+        get_queue_attributes_result.attributes['ApproximateNumberOfMessages'].to_i + get_queue_attributes_result.attributes['ApproximateNumberOfMessagesNotVisible'].to_i
       end
 
       def queue_names
-        # TODO: Need to figure out why this isn't showing my queue
-        list_queues_result = @sqs.list_queues
-        raise 'unable to fetch queue_names' unless list_queues_result.successful?
-
-        # TODO: Need to iterate over batches
-        Array(list_queues_result.queue_urls)
+        @queues
       end
 
       def purge_queue(queue)
@@ -170,6 +198,24 @@ module ResqueSqs
       # Private: do not call
       def watch_queue(queue, redis: @redis)
         redis.sadd(:queues, [queue.to_s])
+      end
+
+      def queue_exists?(queue)
+        queue_names.member?(queue)
+      end
+
+      private
+
+      def fetch_queues
+        queues = []
+        loop do
+          list_queues_result = @sqs.list_queues
+          raise 'unable to fetch queue_names' unless list_queues_result.successful?
+
+          queues.concat(list_queues_result.queue_urls.to_a)
+          break if list_queues_result.next_token.nil?
+        end
+        queues
       end
     end
 

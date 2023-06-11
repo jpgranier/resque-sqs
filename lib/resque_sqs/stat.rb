@@ -14,7 +14,7 @@ module ResqueSqs
     end
 
     def data_store
-      @data_store ||= ResqueSqs.redis
+      @data_store ||= ResqueSqs.data_store
     end
 
     def data_store=(data_store)

@@ -112,39 +112,23 @@ module ResqueSqs
   #   5. An instance of `Redis`, `Redis::Client`, `Redis::DistRedis`,
   #      or `Redis::Namespace`.
   #   6. An Hash of a redis connection {:host => 'localhost', :port => 6379, :db => 0}
-  def redis=(server)
-    sqs = Aws::SQS::Client.new
-    case server
-    when String
-      if server =~ /rediss?\:\/\//
-        redis = Redis.new(:url => server)
-      else
-        server, namespace = server.split('/', 2)
-        host, port, db = server.split(':')
-        redis = Redis.new(:host => host, :port => port, :db => db)
-      end
-      namespace ||= :resque
+  def data_store=(data_store)
+    raise 'ResqueSqs::DataStore must be provided' unless data_store.is_a?(ResqueSqs::DataStore)
 
-      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(namespace, :redis => redis), sqs)
-    when Redis::Namespace
-      @data_store = ResqueSqs::DataStore.new(server, sqs)
-    when ResqueSqs::DataStore
-      @data_store = server
-    when Hash
-      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(:resque, :redis => Redis.new(server)), sqs)
-    else
-      @data_store = ResqueSqs::DataStore.new(Redis::Namespace.new(:resque, :redis => server), sqs)
-    end
+    @data_store = data_store
   end
 
-  # Returns the current Redis connection. If none has been created, will
-  # create a new one.
+  def data_store
+    @data_store
+  end
+
   def redis
-    return @data_store if @data_store
-    self.redis = Redis.respond_to?(:connect) ? Redis.connect : "localhost:6379"
-    self.redis
+    return @data_store.redis if @data_store
+
+    redis_connection = Redis.respond_to?(:connect) ? Redis.connect : "localhost:6379"
+    @data_store = ResqueSqs::DataStore.new(redis_connection, Aws::SQS::Client.new)
+    @data_store.redis
   end
-  # alias :data_store :redis
 
   def redis_id
     @data_store.identifier
@@ -581,34 +565,6 @@ module ResqueSqs
     end
 
     Hash[queue_names.zip(sizes)]
-  end
-
-  # Returns a hash, mapping queue names to (up to `sample_size`) samples of jobs in that queue
-  def sample_queues(sample_size = 1000)
-    queue_names = queues
-
-    samples = redis.pipelined do |piped|
-      queue_names.each do |name|
-        key = "queue:#{name}"
-        piped.llen(key)
-        piped.lrange(key, 0, sample_size - 1)
-      end
-    end
-
-    hash = {}
-
-    queue_names.zip(samples.each_slice(2).to_a) do |queue_name, (queue_size, serialized_samples)|
-      samples = serialized_samples.map do |serialized_sample|
-        Job.decode(serialized_sample)
-      end
-
-      hash[queue_name] = {
-        :size => queue_size,
-        :samples => samples
-      }
-    end
-
-    hash
   end
 
   private

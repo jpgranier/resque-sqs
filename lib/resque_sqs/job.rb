@@ -14,18 +14,6 @@ module ResqueSqs
   class Job
     include Helpers
     extend Helpers
-    def redis
-      ResqueSqs.redis
-    end
-    alias :data_store :redis
-
-    def self.redis
-      ResqueSqs.redis
-    end
-
-    def self.data_store
-      self.redis
-    end
 
     # Given a Ruby object, returns a string suitable for storage in a
     # queue.
@@ -167,6 +155,10 @@ module ResqueSqs
         run_failure_hooks(e)
         raise e
       end
+    end
+
+    def remove_from_queue
+      ResqueSqs.remove_from_queue(@queue, @receipt_handle) unless @receipt_handle.nil?
     end
 
     # Returns the actual class constant represented in this job's payload.
