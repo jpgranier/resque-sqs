@@ -20,6 +20,7 @@ describe "ResqueSqs::Worker" do
   end
 
   def start_worker(rescue_time, term_child, term_timeout = 1)
+    ResqueSqs.data_store.sqs.add_queue(:long_running_job)
     ResqueSqs.enqueue( LongRunningJob, 3, rescue_time )
 
     worker_pid = Kernel.fork do
