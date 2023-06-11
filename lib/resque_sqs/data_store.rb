@@ -134,7 +134,6 @@ module ResqueSqs
 
       def initialize(sqs)
         @sqs = sqs
-        @queues = fetch_queues
       end
 
       def push_to_queue(queue, encoded_item)
@@ -180,7 +179,7 @@ module ResqueSqs
       end
 
       def queue_names
-        @queues
+        fetch_queues
       end
 
       def purge_queue(queue)
@@ -189,10 +188,13 @@ module ResqueSqs
       end
 
       def remove_from_queue(queue, receipt_handle)
-        @sqs.delete_message(
+        delete_message_result = @sqs.delete_message(
           queue_url: queue,
           receipt_handle: receipt_handle
         )
+        unless delete_message_result.successful?
+          raise "failed to delete message from queue #{queue} with receipt_handle #{receipt_handle}"
+        end
       end
 
       # Private: do not call
