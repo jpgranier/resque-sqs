@@ -144,7 +144,7 @@ module ResqueSqs
     self.redis = Redis.respond_to?(:connect) ? Redis.connect : "localhost:6379"
     self.redis
   end
-  alias :data_store :redis
+  # alias :data_store :redis
 
   def redis_id
     data_store.identifier
@@ -354,7 +354,7 @@ module ResqueSqs
 
   # Pops a job off a queue. Queue name should be a string.
   #
-  # Returns a Ruby object.
+  # Returns a receipt_handle and Ruby object.
   def pop(queue)
     receipt_handle, body = data_store.pop_from_queue(queue)
     [receipt_handle, decode(body)]
