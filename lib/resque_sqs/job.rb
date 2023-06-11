@@ -96,47 +96,6 @@ module ResqueSqs
       end
     end
 
-    # Removes a job from a queue. Expects a string queue name, a
-    # string class name, and, optionally, args.
-    #
-    # Returns the number of jobs destroyed.
-    #
-    # If no args are provided, it will remove all jobs of the class
-    # provided.
-    #
-    # That is, for these two jobs:
-    #
-    # { 'class' => 'UpdateGraph', 'args' => ['defunkt'] }
-    # { 'class' => 'UpdateGraph', 'args' => ['mojombo'] }
-    #
-    # The following call will remove both:
-    #
-    #   ResqueSqs::Job.destroy(queue, 'UpdateGraph')
-    #
-    # Whereas specifying args will only remove the 2nd job:
-    #
-    #   ResqueSqs::Job.destroy(queue, 'UpdateGraph', 'mojombo')
-    #
-    # This method can be potentially very slow and memory intensive,
-    # depending on the size of your queue, as it loads all jobs into
-    # a Ruby array before processing.
-    def self.destroy(queue, klass, *args)
-      klass = klass.to_s
-      destroyed = 0
-
-      if args.empty?
-        data_store.everything_in_queue(queue).each do |string|
-          if decode(string)['class'] == klass
-            destroyed += data_store.remove_from_queue(queue,string).to_i
-          end
-        end
-      else
-        destroyed += data_store.remove_from_queue(queue, encode(:class => klass, :args => args))
-      end
-
-      destroyed
-    end
-
     # Given a string queue name, returns an instance of ResqueSqs::Job
     # if any jobs are available. If not, returns nil.
     def self.reserve(queue)

@@ -366,23 +366,6 @@ module ResqueSqs
     @data_store.queue_size(queue)
   end
 
-  # Returns an array of items currently queued, or the item itself
-  # if count = 1. Queue name should be a string.
-  #
-  # start and count should be integer and can be used for pagination.
-  # start is the item to begin, count is how many items to return.
-  #
-  # To get the 3rd page of a 30 item, paginatied list one would use:
-  #   ResqueSqs.peek('my_list', 59, 30)
-  def peek(queue, start = 0, count = 1)
-    results = @data_store.peek_in_queue(queue,start,count)
-    if count == 1
-      decode(results)
-    else
-      results.map { |result| decode(result) }
-    end
-  end
-
   # Does the dirty work of fetching a range of items from a Redis list
   # and converting them into Ruby objects.
   def list_range(key, start = 0, count = 1)
@@ -399,9 +382,9 @@ module ResqueSqs
     @data_store.queue_names
   end
 
-  # Given a queue name, completely deletes the queue.
-  def remove_queue(queue)
-    @data_store.remove_queue(queue)
+  # Given a queue name, removes all elements from the queue.
+  def purge_queue(queue)
+    @data_store.purge_queue(queue)
   end
 
   # Used internally to keep track of which queues we've created.
@@ -488,6 +471,7 @@ module ResqueSqs
   #
   # This method is considered part of the `stable` API.
   def dequeue(klass, *args)
+    # TODO: Fix documentation
     # Perform before_dequeue hooks. Don't perform dequeue if any hook returns false
     before_hooks = Plugin.before_dequeue_hooks(klass).collect do |hook|
       klass.send(hook, *args)

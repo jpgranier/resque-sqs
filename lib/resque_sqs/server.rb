@@ -68,8 +68,8 @@ module ResqueSqs
       end
     end
 
-    post "/queues/:id/remove" do
-      ResqueSqs.remove_queue(params[:id])
+    post "/queues/:id/purge" do
+      ResqueSqs.purge_queue(params[:id])
       redirect u('queues')
     end
 
