@@ -100,7 +100,12 @@ module ResqueSqs
       if skip_exists || exists?(worker_id)
         host, pid, queues_raw = worker_id.split(':', 3)
         queues = queues_raw.split(',')
-        worker = new(*queues)
+        worker = nil
+        begin
+          worker = new(*queues)
+        rescue ResqueSqs::NoQueueError => e
+          Rails.logger.error "The queue #{queues} does not exist"
+        end
         worker.hostname = host
         worker.to_s = worker_id
         worker.pid = pid.to_i

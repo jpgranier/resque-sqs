@@ -294,7 +294,6 @@ describe "ResqueSqs::Job before_enqueue" do
 
   it "a before enqueue hook that returns false should prevent the job from getting queued" do
     ResqueSqs.data_store.sqs.add_queue(:jobs)
-    # ResqueSqs.purge_queue(:jobs)
     history = []
     @worker = ResqueSqs::Worker.new(:jobs)
     assert_nil ResqueSqs.enqueue(BeforeEnqueueJobAbort, history)
