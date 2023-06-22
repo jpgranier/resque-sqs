@@ -1,4 +1,4 @@
-module UTF8Util
+module ResqueSqsUTF8Util
   # use '?' instead of the unicode replace char, since that is 3 bytes
   # and can increase the string size if it's done a lot
   REPLACEMENT_CHAR = "?"
