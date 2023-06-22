@@ -1,12 +1,14 @@
 source "https://rubygems.org"
 gemspec
 
-case redis_version = ENV.fetch('REDIS_VERSION', 'latest')
-when 'latest'
-  gem 'redis', '~> 5.0'
-else
-  gem 'redis', "~> #{redis_version}.0"
-end
+# case redis_version = ENV.fetch('REDIS_VERSION', 'latest')
+# when 'latest'
+#   gem 'redis', '~> 5.0'
+# else
+#   gem 'redis', "~> #{redis_version}.0"
+# end
+
+gem 'redis', "~> 3.0"
 
 gem "json"
 gem "minitest", "~> 5.11"
@@ -15,4 +17,4 @@ gem "rack-test", "~> 2.0"
 gem "rake"
 gem "rubocop", "~> 0.80"
 gem "pry"
-gem 'aws-sdk-sqs', '~>1.57.0'
+gem 'aws-sdk-sqs', '~>1.53.0'
