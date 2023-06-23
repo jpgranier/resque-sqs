@@ -21,7 +21,7 @@ require 'resque_sqs/plugin'
 require 'resque_sqs/data_store'
 require 'resque_sqs/thread_signal'
 
-require 'resque_sqs/vendor/utf8_util'
+require 'resque_sqs/vendor/resque_sqs_utf8_util'
 
 require 'resque_sqs/railtie' if defined?(Rails::Railtie)
 require 'aws-sdk-sqs/client'
