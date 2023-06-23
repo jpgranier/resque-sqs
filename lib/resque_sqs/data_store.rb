@@ -79,9 +79,21 @@ module ResqueSqs
     # Force a reconnect to Redis without closing the connection in the parent
     # process after a fork.
     def reconnect
-      @redis.disconnect!
-      @redis.ping
-      nil
+      # Reconnect to Redis to avoid sharing a connection with the parent,
+      # retry up to 3 times with increasing delay before giving up.
+      tries = 0
+      begin
+        @redis.client.reconnect
+      rescue Redis::BaseConnectionError
+        if (tries += 1) <= 3
+          log "Error reconnecting to Redis; retrying"
+          sleep(tries)
+          retry
+        else
+          log "Error reconnecting to Redis; quitting"
+          raise
+        end
+      end
     end
 
     # Returns an array of all known Resque keys in Redis. Redis' KEYS operation
