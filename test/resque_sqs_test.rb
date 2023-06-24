@@ -242,6 +242,41 @@ describe "Resque" do
       assert_equal [ResqueSqs.redis_id], stats[:servers]
     end
 
+    it "keeps stats" do
+      ResqueSqs.data_store.sqs.purge_all_queues
+      ResqueSqs.data_store.sqs.add_queue(:jobs)
+      ResqueSqs::Job.create(:jobs, SomeJob, 20, '/tmp')
+      ResqueSqs::Job.create(:jobs, BadJob)
+      ResqueSqs::Job.create(:jobs, GoodJob)
+
+      ResqueSqs.data_store.sqs.add_queue(:others)
+      ResqueSqs::Job.create(:others, GoodJob)
+      ResqueSqs::Job.create(:others, GoodJob)
+
+      stats = ResqueSqs.info
+      assert_equal 5, stats[:pending]
+
+      @worker = ResqueSqs::Worker.new(:jobs)
+      @worker.register_worker
+      2.times { @worker.process }
+
+      @worker.reserve_many(1) do |job|
+        @worker.working_on job
+
+        stats = ResqueSqs.info
+        assert_equal 1, stats[:working]
+        assert_equal 1, stats[:workers]
+
+        @worker.done_working
+      end
+
+      stats = ResqueSqs.info
+      assert_equal 2, stats[:queues]
+      assert_equal 3, stats[:processed]
+      assert_equal 1, stats[:failed]
+      assert_equal [ResqueSqs.redis_id], stats[:servers]
+    end
+
   end
 
   describe "stats" do

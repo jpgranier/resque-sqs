@@ -97,6 +97,14 @@ module ResqueSqs
       new(queue, payload, receipt_handle)
     end
 
+    # Given a string queue name, yields instances of ResqueSqs::Job
+    # if any jobs are available.
+    def self.poll(queue, max_poll = 10)
+      ResqueSqs.poll(queue, max_poll) do |receipt_handle, payload|
+        yield new(queue, payload, receipt_handle)
+      end
+    end
+
     # Attempts to perform the work represented by this job instance.
     # Calls #perform on the class given in the payload with the
     # arguments given in the payload.

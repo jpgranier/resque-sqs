@@ -16,6 +16,7 @@ module ResqueSqs
 
     def_delegators :@queue_access, :push_to_queue,
                                    :pop_from_queue,
+                                   :poll_from_queue,
                                    :queue_size,
                                    :queue_names,
                                    :purge_queue,
@@ -142,9 +143,6 @@ module ResqueSqs
     end
 
     class QueueAccess
-      MAX_NUMBER_OF_MESSAGES = 1.freeze
-      LONG_POLLING_WAIT_TIME = 20.freeze
-
       def initialize(sqs)
         @sqs = sqs
       end
@@ -164,12 +162,12 @@ module ResqueSqs
       def pop_from_queue(queue)
         receive_message_result = @sqs.receive_message(
           queue_url: queue,
-          max_number_of_messages: MAX_NUMBER_OF_MESSAGES,
-          wait_time_seconds: LONG_POLLING_WAIT_TIME
+          max_number_of_messages: 1,
+          wait_time_seconds: 0
         )
         raise "failed to pop_from_queue #{queue}" unless receive_message_result.successful?
 
-        if receive_message_result.messages.length > MAX_NUMBER_OF_MESSAGES
+        if receive_message_result.messages.length > 1
           raise 'The number of requested messages did not match the number returned messages'
         end
 
@@ -179,6 +177,28 @@ module ResqueSqs
         raise 'receipt_handle is blank' if message.receipt_handle.to_s.empty?
 
         [message.receipt_handle, message.body]
+      end
+
+      # Constantly poll from queue
+      def poll_from_queue(queue, max_poll = 10)
+        receive_message_result = @sqs.receive_message(
+          queue_url: queue,
+          max_number_of_messages: max_poll,
+          wait_time_seconds: 20
+        )
+        raise "failed to pop_from_queue #{queue}" unless receive_message_result.successful?
+
+        if receive_message_result.messages.length > max_poll
+          raise 'The number of requested messages did not match the number returned messages'
+        end
+
+        result = []
+        receive_message_result.messages.each do |message|
+          raise 'receipt_handle is blank' if message.receipt_handle.to_s.empty?
+
+          result << [message.receipt_handle, message.body]
+        end
+        result
       end
 
       # Get the number of items in the queue

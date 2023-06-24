@@ -16,11 +16,16 @@ class MockSQSClient
     MockSendMessageResult.new
   end
 
-  def receive_message(queue_url:, max_number_of_messages:)
-    raise 'you can only request one message currently' if max_number_of_messages != 1
-
+  def receive_message(queue_url:, max_number_of_messages:, wait_time_seconds:)
     queue = get_queue(queue_url)
-    queue.pop || MockReceiveMessageResult.new
+    messages = []
+    max_number_of_messages.times do |_i|
+      obj = queue.pop
+      break if obj.nil?
+
+      messages << obj.messages.first
+    end
+    MockReceiveMessageResult.new(messages)
   end
 
   def delete_message(queue_url:, receipt_handle:)
@@ -90,8 +95,8 @@ class MockSQSClient
   class MockReceiveMessageResult
     attr_reader :messages
 
-    def initialize
-      @messages = []
+    def initialize(messages = [])
+      @messages = messages
     end
 
     def add_message(message_body)

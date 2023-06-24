@@ -370,6 +370,18 @@ describe "ResqueSqs::Worker" do
     assert_equal false, @worker.work_one_job
   end
 
+  it "can work off many jobs" do
+    ResqueSqs::Job.create(:jobs, GoodJob)
+    assert_equal 2, ResqueSqs.size(:jobs)
+    @worker.pause_processing
+    assert_equal false, @worker.work_many_jobs(2)
+    assert_equal 2, ResqueSqs.size(:jobs)
+    @worker.unpause_processing
+
+    assert_equal true, @worker.work_many_jobs(2)
+    assert_equal 0, ResqueSqs.size(:jobs)
+  end
+
   it "has a unique id" do
     assert_equal "#{`hostname`.chomp}:#{$$}:jobs", @worker.to_s
   end
@@ -480,6 +492,16 @@ describe "ResqueSqs::Worker" do
     assert_equal 3, @worker.processed
   end
 
+  it "keeps track of how many jobs it has processed" do
+    ResqueSqs::Job.create(:jobs, BadJob)
+    ResqueSqs::Job.create(:jobs, BadJob)
+
+    @worker.reserve_many(3) do |job|
+      @worker.process(job)
+    end
+    assert_equal 3, @worker.processed
+  end
+
   it "keeps track of how many failures it has seen" do
     ResqueSqs::Job.create(:jobs, BadJob)
     ResqueSqs::Job.create(:jobs, BadJob)
@@ -487,6 +509,16 @@ describe "ResqueSqs::Worker" do
     3.times do
       job = @worker.reserve
       @worker.process job
+    end
+    assert_equal 2, @worker.failed
+  end
+
+  it "keeps track of how many failures it has seen" do
+    ResqueSqs::Job.create(:jobs, BadJob)
+    ResqueSqs::Job.create(:jobs, BadJob)
+
+    @worker.reserve_many(3) do |job|
+      @worker.process(job)
     end
     assert_equal 2, @worker.failed
   end
@@ -1201,6 +1233,26 @@ describe "ResqueSqs::Worker" do
 
   it "runs jobs without forking if fork isn't implemented" do
     nil while @worker.reserve # empty queue
+    @worker.expects(:fork).raises(NotImplementedError)
+    ResqueSqs.enqueue_to(:jobs, CounterJob)
+
+    begin
+      @worker.work(0)
+      assert_equal 1, CounterJob.perform_count
+      assert_equal false, @worker.fork_per_job?
+    ensure
+      CounterJob.perform_count = 0
+    end
+  end
+
+  it "runs jobs without forking if fork isn't implemented" do
+    nil while @worker.reserve # empty queue
+    loop do
+      empty = true
+      @worker.reserve_many(1) { |_job| empty = false }
+      break if empty
+    end
+
     @worker.expects(:fork).raises(NotImplementedError)
     ResqueSqs.enqueue_to(:jobs, CounterJob)
 

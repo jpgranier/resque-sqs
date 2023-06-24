@@ -344,6 +344,13 @@ module ResqueSqs
     [receipt_handle, decode(body)]
   end
 
+  def poll(queue, max_poll = 10)
+    response = @data_store.poll_from_queue(queue, max_poll)
+    response.each do |receipt_handle, body|
+      yield [receipt_handle, decode(body)]
+    end
+  end
+
   # Returns an integer representing the size of a queue.
   # Queue name should be a string.
   def size(queue)
@@ -445,6 +452,17 @@ module ResqueSqs
   # This method is considered part of the `stable` API.
   def reserve(queue)
     Job.reserve(queue)
+  end
+
+  # This method will return a `ResqueSqs::Job` object or a non-true value
+  # depending on whether a job can be obtained. You should pass it the
+  # precise name of a queue: case matters.
+  #
+  # This method is considered part of the `stable` API.
+  def reserve_many(queue, max_poll = 10)
+    Job.poll(queue, max_poll) do |job|
+      yield job
+    end
   end
 
   # Validates if the given klass could be a valid Resque job

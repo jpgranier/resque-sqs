@@ -217,21 +217,28 @@ module ResqueSqs
     # The default is 5 seconds, but for a semi-active site you may
     # want to use a smaller value.
     #
+    # Can be passed an integer representing how many pieces of
+    # work to poll for at a time. The default is 10, but you
+    # could go lower. This will result in more API calls which
+    # can affect rate limits.
+    #
     # Also accepts a block which will be passed the job as soon as it
     # has completed processing. Useful for testing.
-    def work(interval = 5.0, &block)
+    def work(interval = 5.0, max_poll = 10, &block)
+      raise 'max_poll cannot be greater than 10' if max_poll > 10
+
       interval = Float(interval)
       startup
 
       loop do
         break if shutdown?
 
-        unless work_one_job(&block)
+        unless work_many_jobs(max_poll, &block)
           state_change
           break if interval.zero?
           log_with_severity :debug, "Sleeping for #{interval} seconds"
           procline paused? ? "Paused" : "Waiting for #{queues.join(',')}"
-          sleep interval
+          sleep(interval)
         end
       end
 
@@ -262,6 +269,30 @@ module ResqueSqs
 
       done_working
       true
+    end
+
+    def work_many_jobs(max_jobs = 10, &block)
+      return false if paused?
+
+      found = false
+      reserve_many(max_jobs) do |job|
+        found = true
+        working_on(job)
+        procline "Processing #{job.queue} since #{Time.now.to_i} [#{job.payload_class_name}]"
+
+        log_with_severity :info, "got: #{job.inspect}"
+        job.worker = self
+
+        if fork_per_job?
+          perform_with_fork(job, &block)
+        else
+          perform(job, &block)
+        end
+
+        done_working
+      end
+
+      found
     end
 
     # DEPRECATED. Processes a single job. If none is given, it will
@@ -321,6 +352,26 @@ module ResqueSqs
       end
 
       nil
+    rescue Exception => e
+      log_with_severity :error, "Error reserving job: #{e.inspect}"
+      log_with_severity :error, e.backtrace.join("\n")
+      raise e
+    end
+
+    # Attempts to grab multiple jobs off the provided queues. Returns
+    # nil if no job can be found.
+    def reserve_many(max_jobs = 10)
+      queues.each do |queue|
+        log_with_severity :debug, "Checking #{queue}"
+        found = false
+        ResqueSqs.reserve_many(queue, max_jobs) do |job|
+          found = true
+          log_with_severity :debug, "Found job on #{queue}"
+          yield job
+        end
+
+        break if found
+      end
     rescue Exception => e
       log_with_severity :error, "Error reserving job: #{e.inspect}"
       log_with_severity :error, e.backtrace.join("\n")

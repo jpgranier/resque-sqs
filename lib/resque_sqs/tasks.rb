@@ -17,7 +17,7 @@ namespace :resque_sqs do
 
     worker.prepare
     worker.log "Starting worker #{worker}"
-    worker.work(ENV['INTERVAL'] || 5) # interval, will block
+    worker.work(ENV['INTERVAL'] || 5, ENV['MAX_POLL'] || 10) # interval, will block
   end
 
   desc "Start multiple Resque workers. Should only be used in dev mode."
