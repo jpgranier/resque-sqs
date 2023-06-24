@@ -142,7 +142,8 @@ module ResqueSqs
     end
 
     class QueueAccess
-      MAX_NUMBER_OF_MESSAGES = 1
+      MAX_NUMBER_OF_MESSAGES = 1.freeze
+      LONG_POLLING_WAIT_TIME = 20.freeze
 
       def initialize(sqs)
         @sqs = sqs
@@ -163,7 +164,8 @@ module ResqueSqs
       def pop_from_queue(queue)
         receive_message_result = @sqs.receive_message(
           queue_url: queue,
-          max_number_of_messages: MAX_NUMBER_OF_MESSAGES
+          max_number_of_messages: MAX_NUMBER_OF_MESSAGES,
+          wait_time_seconds: LONG_POLLING_WAIT_TIME
         )
         raise "failed to pop_from_queue #{queue}" unless receive_message_result.successful?
 
