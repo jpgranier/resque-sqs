@@ -58,7 +58,7 @@ module ResqueSqs
       end
     end
 
-    %w( overview working workers key ).each do |page|
+    %w( overview working queues workers key ).each do |page|
       get "/#{page}/?" do
         show page
       end
