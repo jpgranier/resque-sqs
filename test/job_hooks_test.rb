@@ -253,6 +253,7 @@ describe "ResqueSqs::Job after_enqueue" do
 
   it "the after enqueue hook should run" do
     history = []
+    ResqueSqs.data_store.sqs.add_queue(:jobs)
     @worker = ResqueSqs::Worker.new(:jobs)
     ResqueSqs.enqueue(AfterEnqueueJob, history)
     @worker.work(0)
