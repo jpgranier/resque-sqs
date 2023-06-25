@@ -6,7 +6,7 @@
     <% else %>
     <dt>Worker</dt>
     <dd>
-      <a href="<%= u(:workers, job['worker']) %>"><%= job['worker'].split(':')[0...2].join(':') %></a> on <b class='queue-tag'><%= job['queue'] %></b > at <b><span class="time"><%= DateTime.parse(job['failed_at']).strftime(failed_date_format) %></span></b>
+      <a href="<%= u("workers?id=#{job['worker']}") %>"><%= job['worker'].split(':')[0...2].join(':') %></a> on <b class='queue-tag'><%= job['queue'] %></b > at <b><span class="time"><%= DateTime.parse(job['failed_at']).strftime(failed_date_format) %></span></b>
       <% if job['retried_at'] %>
         <div class='retried'>
           Retried <b><span class="time"><%= DateTime.parse(job['retried_at']).strftime(failed_date_format) %></span></b>
