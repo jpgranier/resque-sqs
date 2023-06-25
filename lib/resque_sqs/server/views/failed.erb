@@ -9,14 +9,14 @@
   <input type="submit" name="" value="Clear <%= params[:queue] ? "'#{escape_html(params[:queue])}'" : 'Failed' %> Jobs" class="confirmSubmission" />
 </form>
 
-<% unless params[:queue] %>
-  <form method="POST" action="<%= u "failed/clear_retried" %>">
-    <input type="submit" name="" value="Clear Retried Jobs" onclick='return confirm("Are you absolutely sure? This cannot be undone.");' />
-  </form>
-<% end %>
-<form method="POST" action="<%= u "failed#{'/' + params[:queue] if params[:queue]}/requeue/all" %>">
-  <input type="submit" name="" value="Retry <%= params[:queue] ? "'#{escape_html(params[:queue])}'" : 'Failed' %> Jobs" class="confirmSubmission" />
-</form>
+<%# unless params[:queue] %>
+<!--  <form method="POST" action="<%#= u "failed/clear_retried" %>">-->
+<!--    <input type="submit" name="" value="Clear Retried Jobs" onclick='return confirm("Are you absolutely sure? This cannot be undone.");' />-->
+<!--  </form>-->
+<%# end %>
+<!--<form method="POST" action="<%#= u "failed#{'/' + params[:queue] if params[:queue]}/requeue/all" %>">-->
+<!--  <input type="submit" name="" value="Retry <%#= params[:queue] ? "'#{escape_html(params[:queue])}'" : 'Failed' %> Jobs" class="confirmSubmission" />-->
+<!--</form>-->
 <% end %>
 
 <% if failed_multiple_queues? && !params[:queue] %>
