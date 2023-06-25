@@ -168,7 +168,7 @@ module ResqueSqs
     end
 
     def remove_from_queue
-      ResqueSqs.remove_from_queue(@queue, @receipt_handle) unless @receipt_handle.nil?
+      ResqueSqs.remove_from_queue(@queue, @receipt_handle)
     end
 
     # Returns the actual class constant represented in this job's payload.

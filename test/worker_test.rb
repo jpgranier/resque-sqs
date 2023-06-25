@@ -111,7 +111,7 @@ describe "ResqueSqs::Worker" do
       assert_equal "at_exit", File.open(tmpfile).read.strip
     else
       # ensure we actually fork
-      ResqueSqs.redis.disconnect!
+      ResqueSqs.data_store.reconnect
       ResqueSqs::Job.create(:at_exit_jobs, AtExitJob, tmpfile)
       worker = ResqueSqs::Worker.new(:at_exit_jobs)
       worker.run_at_exit_hooks = true
@@ -139,7 +139,7 @@ describe "ResqueSqs::Worker" do
       Process.waitpid(worker_pid)
     else
       # ensure we actually fork
-      ResqueSqs.redis.disconnect!
+      ResqueSqs.data_store.reconnect
       ResqueSqs::Job.create(:not_failing_job, RaiseExceptionOnFailure)
       worker = ResqueSqs::Worker.new(:not_failing_job)
       worker.run_at_exit_hooks = true
@@ -159,7 +159,7 @@ describe "ResqueSqs::Worker" do
       assert !File.exist?(tmpfile), "The file '#{tmpfile}' exists, at_exit hooks were run"
     else
       # ensure we actually fork
-      ResqueSqs.redis.disconnect!
+      ResqueSqs.data_store.reconnect
       ResqueSqs::Job.create(:at_exit_jobs, AtExitJob, tmpfile)
       worker = ResqueSqs::Worker.new(:at_exit_jobs)
       suppress_warnings do
@@ -1322,7 +1322,7 @@ describe "ResqueSqs::Worker" do
         @queue = :long_running_job
 
         def self.perform(run_time)
-          ResqueSqs.redis.disconnect! # get its own connection
+          ResqueSqs.data_store.reconnect # get its own connection
           ResqueSqs.redis.rpush('pre-term-timeout-test:start', Process.pid)
           sleep run_time
           ResqueSqs.redis.rpush('pre-term-timeout-test:result', 'Finished Normally')
@@ -1344,7 +1344,7 @@ describe "ResqueSqs::Worker" do
 
             worker_pid = Kernel.fork do
               # reconnect to redis
-              ResqueSqs.redis.disconnect!
+              ResqueSqs.data_store.reconnect
 
               worker = ResqueSqs::Worker.new(:long_running_job)
               worker.pre_shutdown_timeout = pre_shutdown_timeout

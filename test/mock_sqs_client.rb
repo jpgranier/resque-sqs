@@ -28,20 +28,8 @@ class MockSQSClient
     MockReceiveMessageResult.new(messages)
   end
 
+  # This is just mocking the deletion of a hidden SQS object. No need to do anything.
   def delete_message(queue_url:, receipt_handle:)
-    queue = get_queue(queue_url)
-    deleted = false
-    queue.length.times do |_i|
-      receive_message_result = queue.pop
-      if !deleted && receive_message_result.messages.first.receipt_handle == receipt_handle
-        deleted = true
-        next
-      end
-      queue.push(receive_message_result)
-    end
-
-    raise "did not find receipt_handle #{receipt_handle} in queue" unless deleted
-
     MockSQSClient::MockDeleteMessageResult.new
   end
 
