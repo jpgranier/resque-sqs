@@ -287,6 +287,7 @@ describe "ResqueSqs::Job before_enqueue" do
 
   it "the before enqueue hook should run" do
     history = []
+    ResqueSqs.data_store.sqs.add_queue(:jobs)
     @worker = ResqueSqs::Worker.new(:jobs)
     assert ResqueSqs.enqueue(BeforeEnqueueJob, history)
     @worker.work(0)
