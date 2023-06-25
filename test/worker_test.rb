@@ -296,6 +296,7 @@ describe "ResqueSqs::Worker" do
   end
 
   it "catches exceptional jobs" do
+    ResqueSqs.data_store.sqs.add_queue(:jobs)
     ResqueSqs::Job.create(:jobs, BadJob)
     ResqueSqs::Job.create(:jobs, BadJob)
     @worker.process
