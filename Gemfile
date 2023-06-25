@@ -8,7 +8,7 @@ gemspec
 #   gem 'redis', "~> #{redis_version}.0"
 # end
 
-gem 'redis', "~> 3.0"
+gem 'redis', "~> 3.0.7"
 
 gem "json"
 gem "minitest", "~> 5.11"
