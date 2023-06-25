@@ -252,7 +252,7 @@ describe "ResqueSqs::Worker" do
     error_message = messages.first
     assert_match('Additional error (RuntimeError: This job is just so bad!)', error_message)
     assert_match('occurred in running failure hooks', error_message)
-    assert_match('for job (Job{jobs} | BadJobWithOnFailureHookFail | [])', error_message)
+    assert_match('for job (Job{jobs} | BadJobWithOnFailureHookFail | nil)', error_message)
     assert_match('Original error that caused job failure was RuntimeError: ResqueSqs::DirtyExit', error_message)
   end
 
@@ -435,7 +435,7 @@ describe "ResqueSqs::Worker" do
     without_forking do
       @worker.extend(AssertInWorkBlock).work(0) do
         task = @worker.job
-        assert_equal({"args"=>[20, "/tmp"], "class"=>"SomeJob"}, task['payload'])
+        assert_equal({"class"=>"SomeJob"}, task['payload'])
         assert task['run_at']
         assert_equal 'jobs', task['queue']
       end

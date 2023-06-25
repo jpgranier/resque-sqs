@@ -752,7 +752,8 @@ module ResqueSqs
       data = encode \
         :queue   => job.queue,
         :run_at  => Time.now.utc.iso8601,
-        :payload => job.payload
+        # :payload => job.payload
+        :payload => { "class" => job.payload["class"] }
       data_store.set_worker_payload(self,data)
       state_change
     end
