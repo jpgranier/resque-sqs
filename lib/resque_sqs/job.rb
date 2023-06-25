@@ -154,6 +154,8 @@ module ResqueSqs
           job.send(hook, *job_args)
         end
 
+        remove_from_queue if job_was_performed
+
         # Return true if the job was performed
         return job_was_performed
 

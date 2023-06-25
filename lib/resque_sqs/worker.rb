@@ -227,7 +227,9 @@ module ResqueSqs
     def work(interval = 5.0, max_poll = 10, &block)
       interval = Float(interval)
       max_poll = Integer(max_poll)
-      raise 'max_poll cannot be greater than 10' if max_poll > 10
+      if max_poll > 10
+        raise 'max_poll cannot be greater than 10'
+      end
 
       startup
 
