@@ -225,9 +225,10 @@ module ResqueSqs
     # Also accepts a block which will be passed the job as soon as it
     # has completed processing. Useful for testing.
     def work(interval = 5.0, max_poll = 10, &block)
+      interval = Float(interval)
+      max_poll = Integer(max_poll)
       raise 'max_poll cannot be greater than 10' if max_poll > 10
 
-      interval = Float(interval)
       startup
 
       loop do
