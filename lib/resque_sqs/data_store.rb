@@ -21,7 +21,6 @@ module ResqueSqs
                                    :queue_names,
                                    :purge_queue,
                                    :remove_from_queue,
-                                   :watch_queue,
                                    :queue_exists?
 
     def_delegators :@failed_queue_access, :add_failed_queue,
@@ -139,15 +138,16 @@ module ResqueSqs
 
     def sqs=(sqs)
       @sqs = sqs
-      @queue_access = QueueAccess.new(@sqs)
+      @queue_access = QueueAccess.new(@sqs, @redis)
     end
 
     class QueueAccess
 
       RESQUE_SQS_QUEUE_NAME_PREFIX = 'ResqueSqs'
 
-      def initialize(sqs)
+      def initialize(sqs, redis)
         @sqs = sqs
+        @redis = redis
       end
 
       def push_to_queue(queue, encoded_item)
@@ -216,6 +216,9 @@ module ResqueSqs
       end
 
       def queue_names
+        queues = fetched_cached_queues
+        return queues if queues.length > 0
+
         fetch_queues
       end
 
@@ -234,16 +237,23 @@ module ResqueSqs
         end
       end
 
-      # Private: do not call
-      def watch_queue(queue, redis: @redis)
-        redis.sadd(:queues, [queue.to_s])
-      end
-
       def queue_exists?(queue)
-        queue_names.member?(queue)
+        return true if queue_names.member?(queue)
+
+        fetch_queues.member?(queue)
       end
 
       private
+
+      def fetched_cached_queues
+        @redis.smembers(:sqs_queues)
+      end
+
+      def cache_queues(queues)
+        return if queues.length == 0
+
+        @redis.sadd(:sqs_queues, queues)
+      end
 
       def fetch_queues
         queues = []
@@ -256,6 +266,8 @@ module ResqueSqs
           queues.concat(list_queues_result.queue_urls.to_a)
           break if list_queues_result.next_token.nil?
         end
+
+        cache_queues(queues)
         queues
       end
     end

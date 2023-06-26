@@ -382,13 +382,6 @@ module ResqueSqs
     @data_store.remove_from_queue(queue, receipt_handle)
   end
 
-  # Used internally to keep track of which queues we've created.
-  # Don't call this directly.
-  def watch_queue(queue)
-    @data_store.watch_queue(queue)
-  end
-
-
   #
   # job shortcuts
   #
