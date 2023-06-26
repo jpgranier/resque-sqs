@@ -143,6 +143,9 @@ module ResqueSqs
     end
 
     class QueueAccess
+
+      RESQUE_SQS_QUEUE_NAME_PREFIX = 'ResqueSqs'
+
       def initialize(sqs)
         @sqs = sqs
       end
@@ -245,7 +248,9 @@ module ResqueSqs
       def fetch_queues
         queues = []
         loop do
-          list_queues_result = @sqs.list_queues
+          list_queues_result = @sqs.list_queues(
+            queue_name_prefix: RESQUE_SQS_QUEUE_NAME_PREFIX
+          )
           raise 'unable to fetch queue_names' unless list_queues_result.successful?
 
           queues.concat(list_queues_result.queue_urls.to_a)

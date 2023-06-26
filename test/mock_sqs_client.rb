@@ -46,7 +46,7 @@ class MockSQSClient
     MockSQSClient::MockPurgeQueueResult.new
   end
 
-  def list_queues
+  def list_queues(queue_name_prefix:)
     MockSQSClient::MockListQueuesResult.new(@queues.keys)
   end
 
