@@ -179,7 +179,9 @@ module ResqueSqs
 
     def queues=(queues)
       queues = (ENV["QUEUES"] || ENV['QUEUE']).to_s.split(',') if queues.empty?
-      @queues = queues.map { |queue| queue.to_s.strip }
+
+
+      @queues = queues.map { |queue| ResqueSqs.format_queue_name(queue) }
 
       raise ResqueSqs::NoQueueError.new('no queue was provided') if @queues.empty?
       validate_queues

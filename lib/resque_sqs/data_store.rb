@@ -9,9 +9,9 @@ module ResqueSqs
     attr_reader :redis
     attr_reader :sqs
 
-    def initialize(redis_connection, sqs_client)
-      self.redis = redis_connection
-      self.sqs = sqs_client
+    def initialize(redis_connection, sqs_client, aws_account_id)
+      configure_redis(redis_connection)
+      configure_sqs(sqs_client, aws_account_id)
     end
 
     def_delegators :@queue_access, :push_to_queue,
@@ -21,7 +21,8 @@ module ResqueSqs
                                    :queue_names,
                                    :purge_queue,
                                    :remove_from_queue,
-                                   :queue_exists?
+                                   :queue_exists?,
+                                   :format_queue_name
 
     def_delegators :@failed_queue_access, :add_failed_queue,
                                           :remove_failed_queue,
@@ -111,7 +112,7 @@ module ResqueSqs
 
     private
 
-    def redis=(redis_connection)
+    def configure_redis(redis_connection)
       case redis_connection
       when String
         if redis_connection =~ /rediss?\:\/\//
@@ -136,17 +137,19 @@ module ResqueSqs
       @stats_access = StatsAccess.new(@redis)
     end
 
-    def sqs=(sqs)
+    def configure_sqs(sqs, aws_account_id)
       @sqs = sqs
-      @queue_access = QueueAccess.new(@sqs, @redis)
+      @queue_access = QueueAccess.new(@sqs, aws_account_id, @redis)
     end
 
     class QueueAccess
 
       RESQUE_SQS_QUEUE_NAME_PREFIX = 'ResqueSqs'
+      RESQUE_SQS_QUEUE_NAME_REGEX = /^#{RESQUE_SQS_QUEUE_NAME_PREFIX}/
 
-      def initialize(sqs, redis)
+      def initialize(sqs, aws_account_id, redis)
         @sqs = sqs
+        @aws_account_id = aws_account_id.gsub('-', '')
         @redis = redis
       end
 
@@ -220,6 +223,15 @@ module ResqueSqs
         return queues if queues.length > 0
 
         fetch_queues
+      end
+
+      # Builds SQS Queue Names based on sqs region and aws_account_id. This keeps us from complicating multi-datacenter
+      # deployments
+      def format_queue_name(queue)
+        queue = queue.to_s.strip
+        return queue unless queue.match(RESQUE_SQS_QUEUE_NAME_REGEX)
+
+        "https://sqs.#{@sqs.config.region}.amazonaws.com/#{@aws_account_id}/#{queue}"
       end
 
       def purge_queue(queue)

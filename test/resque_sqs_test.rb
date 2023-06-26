@@ -22,14 +22,14 @@ describe "Resque" do
   it "can set a namespace through a url-like string" do
     assert ResqueSqs.redis
     assert_equal :resque, ResqueSqs.redis.namespace
-    ResqueSqs.data_store = ResqueSqs::DataStore.new('localhost:9736/namespace', MockSQSClient.new)
+    ResqueSqs.data_store = ResqueSqs::DataStore.new('localhost:9736/namespace', MockSQSClient.new, 'mock-aws-account-id')
     assert_equal 'namespace', ResqueSqs.redis.namespace
   end
 
   it "redis= works correctly with a Redis::Namespace param" do
     new_redis = Redis.new(:host => "localhost", :port => 9736)
     new_namespace = Redis::Namespace.new("namespace", :redis => new_redis)
-    ResqueSqs.data_store = ResqueSqs::DataStore.new(new_namespace, MockSQSClient.new(['default']))
+    ResqueSqs.data_store = ResqueSqs::DataStore.new(new_namespace, MockSQSClient.new(['default']), 'mock-aws-account-id')
 
     assert_equal new_namespace._client, ResqueSqs.redis._client
     assert_equal 0, ResqueSqs.size(:default)
@@ -151,6 +151,14 @@ describe "Resque" do
 
   it "queues are always a list" do
     assert ResqueSqs.queues.is_a?(Array)
+  end
+
+  it "sqs queue names get formatted correctly" do
+    queue = ResqueSqs.format_queue_name('ResqueSqs-test')
+
+    # puts queue
+    # raise queue
+    assert "https://sqs.us-east-1.amazonaws.com/mockawsaccountid/ResqueSqs-test" == queue
   end
 
   it "badly wants a class name, too" do

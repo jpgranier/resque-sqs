@@ -8,6 +8,10 @@ class MockSQSClient
     end
   end
 
+  def config
+    Config.new
+  end
+
   def send_message(queue_url:, message_body:)
     queue = get_queue(queue_url)
     receive_message_result = MockReceiveMessageResult.new
@@ -171,6 +175,12 @@ class MockSQSClient
 
     def clear
       @queue = []
+    end
+  end
+
+  class Config
+    def region
+      'us-east-1'
     end
   end
 end

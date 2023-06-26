@@ -126,7 +126,7 @@ module ResqueSqs
     return @data_store.redis if @data_store
 
     redis_connection = Redis.respond_to?(:connect) ? Redis.connect : "localhost:6379"
-    @data_store = ResqueSqs::DataStore.new(redis_connection, Aws::SQS::Client.new)
+    @data_store = ResqueSqs::DataStore.new(redis_connection, Aws::SQS::Client.new, 'mock-aws-account-id')
     @data_store.redis
   end
 
@@ -371,6 +371,11 @@ module ResqueSqs
   # Returns an array of all known Resque queues as strings.
   def queues
     @data_store.queue_names
+  end
+
+  # Returns a queue name with any customizations or formatting applied
+  def format_queue_name(queue)
+    data_store.format_queue_name(queue)
   end
 
   # Given a queue name, removes all elements from the queue.
